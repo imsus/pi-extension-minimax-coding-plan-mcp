@@ -3,7 +3,11 @@ node_modules/
 
 # Build outputs
 dist/
+extensions/
 *.tsbuildinfo
+
+# Generated documentation
+docs/
 
 # IDE
 .vscode/

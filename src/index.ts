@@ -1,22 +1,45 @@
 /**
- * MiniMax MCP Extension for pi coding agent
+ * MiniMax Coding Plan MCP Extension for pi coding agent
  * 
- * Provides web_search and understand_image tools from MiniMax Coding Plan MCP
+ * Provides web_search and understand_image tools from MiniMax Coding Plan API
  * 
- * Prerequisites:
- * - MiniMax Coding Plan subscription: https://platform.minimax.io/subscribe/coding-plan
- * - API Key from MiniMax platform
+ * ## Features
+ * - 🔍 **Web Search** - Search the web for current information
+ * - 🖼️ **Image Understanding** - Analyze images with AI
+ * - ⚙️ **Configuration** - Support for environment variables and auth.json
  * 
- * Installation:
- * 1. npm install pi-minimax-mcp
- * 2. Add to ~/.pi/settings.json:
- *    {
- *      "packages": ["npm:pi-minimax-mcp@latest"]
- *    }
+ * ## Configuration
  * 
- * Or set environment variables:
- * - MINIMAX_API_KEY: Your MiniMax API key
- * - MINIMAX_API_HOST: API endpoint (default: https://api.minimax.io)
+ * Environment variables:
+ * - `MINIMAX_API_KEY` - Your MiniMax API key
+ * - `MINIMAX_API_HOST` - API endpoint (default: https://api.minimax.io)
+ * - `MINIMAX_CN_API_KEY` - China region API key
+ * 
+ * Auth file (~/.pi/agent/auth.json):
+ * ```json
+ * {
+ *   "minimax": { "type": "api_key", "key": "your-key" }
+ * }
+ * ```
+ * 
+ * ## Example Usage
+ * 
+ * ```typescript
+ * // Search the web
+ * web_search({ query: "TypeScript best practices 2025" })
+ * 
+ * // Analyze an image
+ * understand_image({
+ *   prompt: "What error is shown?",
+ *   image_url: "https://example.com/screenshot.png"
+ * })
+ * ```
+ * 
+ * ## See Also
+ * - [MiniMax Coding Plan](https://platform.minimax.io/subscribe/coding-plan)
+ * - [MiniMax MCP Python Package](https://pypi.org/project/minimax-coding-plan-mcp/)
+ * 
+ * @packageDocumentation
  */
 
 import type { ExtensionAPI } from "@mariozechner/pi-coding-agent";
@@ -29,26 +52,51 @@ import { join } from "path";
 import { homedir } from "os";
 import { chmodSync } from "fs";
 
+/**
+ * Configuration state for the MiniMax extension
+ * 
+ * @internal
+ */
 interface MiniMaxConfig {
+  /** The MiniMax API key */
   apiKey: string;
+  /** The API host URL */
   apiHost: string;
+  /** Whether the extension is configured */
   configured: boolean;
 }
 
+/**
+ * Details about tool execution for UI rendering
+ * 
+ * @internal
+ */
 interface MiniMaxToolDetails {
+  /** Current status: searching, processing, analyzing, complete, error, cancelled */
   status: string;
-  raw?: any;
+  /** Raw API response data */
+  raw?: Record<string, unknown>;
+  /** Error message if status is error */
   error?: string;
+  /** HTTP status code */
   statusCode?: number;
+  /** Search query for web_search tool */
   query?: string;
+  /** Prompt for understand_image tool */
   prompt?: string;
+  /** Image URL for understand_image tool */
   imageUrl?: string;
+  /** Number of results for web_search tool */
   resultCount?: number;
 }
 
 /**
  * Load MiniMax API key from auth file
- * Priority: auth.json > environment variable
+ * 
+ * Searches for API key in ~/.pi/agent/auth.json under "minimax" or "minimax_cn" entries.
+ * 
+ * @returns The API key if found, null otherwise
+ * @internal
  */
 function loadApiKeyFromAuthFile(): string | null {
   const homedirPath = homedir();
@@ -76,6 +124,11 @@ function loadApiKeyFromAuthFile(): string | null {
 
 /**
  * Save MiniMax API key to auth file
+ * 
+ * Writes the API key to ~/.pi/agent/auth.json with secure permissions (0600).
+ * 
+ * @param apiKey - The API key to save
+ * @internal
  */
 function saveApiKeyToAuthFile(apiKey: string): void {
   const homedirPath = homedir();
@@ -131,7 +184,16 @@ function removeApiKeyFromAuthFile(): void {
 
 /**
  * Convert image to base64 data URL format
- * Supports: HTTP/HTTPS URLs, local file paths, and existing base64 data URLs
+ * 
+ * Handles three types of image inputs:
+ * - HTTP/HTTPS URLs: Downloads and converts to base64
+ * - Local file paths: Reads and converts to base64
+ * - Existing base64 data URLs: Passes through unchanged
+ * 
+ * @param imageUrl - The image URL, data URL, or local file path
+ * @returns Base64 data URL in format "data:image/{format};base64,{data}"
+ * @throws Error if image cannot be downloaded or read
+ * @internal
  */
 async function processImageUrl(imageUrl: string): Promise<string> {
   // Remove @ prefix if present
@@ -150,7 +212,7 @@ async function processImageUrl(imageUrl: string): Promise<string> {
     if (!response.ok) {
       throw new Error(`Failed to download image: ${response.statusText}`);
     }
-    
+
     const contentType = response.headers.get("content-type")?.toLowerCase() || "";
     let imageFormat = "jpeg";
     if (contentType.includes("png")) {
@@ -239,7 +301,7 @@ Environment variables:
 Get your API key:
   https://platform.minimax.io/subscribe/coding-plan
         `.trim();
-        
+
         ctx.ui.notify(helpText, "info");
         return;
       }
@@ -259,7 +321,7 @@ Get your API key:
           "Clear MiniMax Configuration",
           "This will remove your API key from ~/.pi/agent/auth.json"
         );
-        
+
         if (confirmClear) {
           removeApiKeyFromAuthFile();
           config.apiKey = "";
@@ -273,13 +335,13 @@ Get your API key:
       const keyMatch = args?.match(/--key[=:\s]+([^\s]+)/i);
       if (keyMatch) {
         const newKey = keyMatch[1];
-        
+
         // Confirm before saving
         const confirmSave = await ctx.ui.confirm(
           "Save MiniMax API Key?",
           `This will save to ~/.pi/agent/auth.json`
         );
-        
+
         if (confirmSave) {
           saveApiKeyToAuthFile(newKey);
           config.apiKey = newKey;
@@ -308,7 +370,7 @@ Your API key will be saved to ~/.pi/agent/auth.json
           "Save MiniMax API Key?",
           "Save this API key to ~/.pi/agent/auth.json?"
         );
-        
+
         if (confirmSave) {
           saveApiKeyToAuthFile(apiKey.trim());
           config.apiKey = apiKey.trim();
@@ -343,7 +405,7 @@ Your API key will be saved to ~/.pi/agent/auth.json
           "  • web_search - Search the web",
           "  • understand_image - Analyze images",
         ].join("\n");
-        
+
         ctx.ui.notify(status, "info");
       } else {
         ctx.ui.notify(
@@ -439,7 +501,7 @@ Tips:
 
         if (!response.ok) {
           const errorText = await response.text();
-          
+
           // Handle authentication errors
           if (response.status === 401 || response.status === 403) {
             config.configured = false;
@@ -456,7 +518,7 @@ Tips:
         }
 
         const result = await response.json() as any;
-        
+
         // Check MiniMax API error code
         const baseResp = result.base_resp || {};
         if (baseResp.status_code !== 0) {
@@ -635,7 +697,7 @@ Examples:
 
         if (!response.ok) {
           const errorText = await response.text();
-          
+
           // Handle authentication errors
           if (response.status === 401 || response.status === 403) {
             config.configured = false;
@@ -652,7 +714,7 @@ Examples:
         }
 
         const result = await response.json() as any;
-        
+
         // Check MiniMax API error code
         const baseResp = result.base_resp || {};
         if (baseResp.status_code !== 0) {
@@ -676,7 +738,7 @@ Examples:
         }
 
         const content = result.content;
-        
+
         if (!content) {
           return createErrorResult(
             "No content returned",
@@ -736,6 +798,11 @@ Examples:
 
 /**
  * Create an error result with proper formatting
+ * 
+ * @param title - The error title
+ * @param message - The error message
+ * @returns Formatted error result for pi tool response
+ * @internal
  */
 function createErrorResult(title: string, message: string) {
   return {
@@ -747,6 +814,14 @@ function createErrorResult(title: string, message: string) {
 
 /**
  * Format search results from MiniMax API into readable text
+ * 
+ * Parses the MiniMax search response and formats it with:
+ * - Numbered search results with title, URL, snippet, and date
+ * - Related searches section
+ * 
+ * @param result - The raw API response from MiniMax search
+ * @returns Formatted human-readable search results
+ * @internal
  */
 function formatSearchResults(result: any): string {
   if (!result) return "No results found";
@@ -756,7 +831,7 @@ function formatSearchResults(result: any): string {
   // Handle organic results
   if (result.organic && Array.isArray(result.organic)) {
     output = "🔍 Search Results\n\n";
-    
+
     result.organic.forEach((item: any, index: number) => {
       const title = item.title ?? "No title";
       const link = item.link ?? "N/A";
@@ -765,18 +840,18 @@ function formatSearchResults(result: any): string {
 
       output += `${index + 1}. ${title}\n`;
       output += `   📎 ${link}\n`;
-      
+
       if (snippet) {
-        const truncatedSnippet = snippet.length > 200 
-          ? snippet.slice(0, 200) + "..." 
+        const truncatedSnippet = snippet.length > 200
+          ? snippet.slice(0, 200) + "..."
           : snippet;
         output += `   ${truncatedSnippet}\n`;
       }
-      
+
       if (date) {
         output += `   📅 ${date}\n`;
       }
-      
+
       output += "\n";
     });
   }

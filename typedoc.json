@@ -1,0 +1,16 @@
+{
+  "$schema": "https://typedoc.org/schema.json",
+  "entryPoints": ["src/index.ts"],
+  "out": "docs",
+  "cleanOutputDir": true,
+  "commentStyle": "all",
+  "visibilityFilters": {
+    "private": false,
+    "protected": false
+  },
+  "searchInComments": true,
+  "sort": ["kind", "visibility", "alphabetical"],
+  "plugin": ["typedoc-plugin-versions"],
+  "skipErrorChecking": true,
+  "tsconfig": "tsconfig.json"
+}

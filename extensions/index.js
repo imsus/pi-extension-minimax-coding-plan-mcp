@@ -1,22 +1,45 @@
 /**
- * MiniMax MCP Extension for pi coding agent
+ * MiniMax Coding Plan MCP Extension for pi coding agent
  *
- * Provides web_search and understand_image tools from MiniMax Coding Plan MCP
+ * Provides web_search and understand_image tools from MiniMax Coding Plan API
  *
- * Prerequisites:
- * - MiniMax Coding Plan subscription: https://platform.minimax.io/subscribe/coding-plan
- * - API Key from MiniMax platform
+ * ## Features
+ * - 🔍 **Web Search** - Search the web for current information
+ * - 🖼️ **Image Understanding** - Analyze images with AI
+ * - ⚙️ **Configuration** - Support for environment variables and auth.json
  *
- * Installation:
- * 1. npm install pi-minimax-mcp
- * 2. Add to ~/.pi/settings.json:
- *    {
- *      "packages": ["npm:pi-minimax-mcp@latest"]
- *    }
+ * ## Configuration
  *
- * Or set environment variables:
- * - MINIMAX_API_KEY: Your MiniMax API key
- * - MINIMAX_API_HOST: API endpoint (default: https://api.minimax.io)
+ * Environment variables:
+ * - `MINIMAX_API_KEY` - Your MiniMax API key
+ * - `MINIMAX_API_HOST` - API endpoint (default: https://api.minimax.io)
+ * - `MINIMAX_CN_API_KEY` - China region API key
+ *
+ * Auth file (~/.pi/agent/auth.json):
+ * ```json
+ * {
+ *   "minimax": { "type": "api_key", "key": "your-key" }
+ * }
+ * ```
+ *
+ * ## Example Usage
+ *
+ * ```typescript
+ * // Search the web
+ * web_search({ query: "TypeScript best practices 2025" })
+ *
+ * // Analyze an image
+ * understand_image({
+ *   prompt: "What error is shown?",
+ *   image_url: "https://example.com/screenshot.png"
+ * })
+ * ```
+ *
+ * ## See Also
+ * - [MiniMax Coding Plan](https://platform.minimax.io/subscribe/coding-plan)
+ * - [MiniMax MCP Python Package](https://pypi.org/project/minimax-coding-plan-mcp/)
+ *
+ * @packageDocumentation
  */
 import { Text } from "@mariozechner/pi-tui";
 import { Type } from "@sinclair/typebox";
@@ -27,7 +50,11 @@ import { join } from "path";
 import { homedir } from "os";
 /**
  * Load MiniMax API key from auth file
- * Priority: auth.json > environment variable
+ *
+ * Searches for API key in ~/.pi/agent/auth.json under "minimax" or "minimax_cn" entries.
+ *
+ * @returns The API key if found, null otherwise
+ * @internal
  */
 function loadApiKeyFromAuthFile() {
     const homedirPath = homedir();
@@ -53,6 +80,11 @@ function loadApiKeyFromAuthFile() {
 }
 /**
  * Save MiniMax API key to auth file
+ *
+ * Writes the API key to ~/.pi/agent/auth.json with secure permissions (0600).
+ *
+ * @param apiKey - The API key to save
+ * @internal
  */
 function saveApiKeyToAuthFile(apiKey) {
     const homedirPath = homedir();
@@ -100,7 +132,16 @@ function removeApiKeyFromAuthFile() {
 }
 /**
  * Convert image to base64 data URL format
- * Supports: HTTP/HTTPS URLs, local file paths, and existing base64 data URLs
+ *
+ * Handles three types of image inputs:
+ * - HTTP/HTTPS URLs: Downloads and converts to base64
+ * - Local file paths: Reads and converts to base64
+ * - Existing base64 data URLs: Passes through unchanged
+ *
+ * @param imageUrl - The image URL, data URL, or local file path
+ * @returns Base64 data URL in format "data:image/{format};base64,{data}"
+ * @throws Error if image cannot be downloaded or read
+ * @internal
  */
 async function processImageUrl(imageUrl) {
     // Remove @ prefix if present
@@ -582,6 +623,11 @@ Examples:
 }
 /**
  * Create an error result with proper formatting
+ *
+ * @param title - The error title
+ * @param message - The error message
+ * @returns Formatted error result for pi tool response
+ * @internal
  */
 function createErrorResult(title, message) {
     return {
@@ -592,6 +638,14 @@ function createErrorResult(title, message) {
 }
 /**
  * Format search results from MiniMax API into readable text
+ *
+ * Parses the MiniMax search response and formats it with:
+ * - Numbered search results with title, URL, snippet, and date
+ * - Related searches section
+ *
+ * @param result - The raw API response from MiniMax search
+ * @returns Formatted human-readable search results
+ * @internal
  */
 function formatSearchResults(result) {
     if (!result)
