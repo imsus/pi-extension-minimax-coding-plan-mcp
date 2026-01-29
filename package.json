@@ -3,26 +3,18 @@
   "version": "1.0.0",
   "description": "MiniMax Coding Plan extension for pi coding agent - provides web_search and understand_image tools",
   "type": "module",
-  "main": "dist/index.js",
-  "types": "dist/index.d.ts",
+  "main": "extensions/index.js",
+  "types": "extensions/index.d.ts",
   "exports": {
     ".": {
-      "import": "./dist/index.js",
-      "types": "./dist/index.d.ts"
+      "import": "./extensions/index.js",
+      "types": "./extensions/index.d.ts"
     }
-  },
-  "pi": {
-    "extensions": [
-      "./dist/index.js"
-    ],
-    "skills": [
-      "./skills/web-search/SKILL.md",
-      "./skills/image-understanding/SKILL.md"
-    ]
   },
   "keywords": [
     "pi",
     "pi-coding-agent",
+    "pi-package",
     "minimax",
     "coding-plan",
     "mcp",
