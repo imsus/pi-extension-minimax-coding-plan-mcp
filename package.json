@@ -3,14 +3,6 @@
   "version": "1.0.0",
   "description": "MiniMax Coding Plan extension for pi coding agent - provides web_search and understand_image tools",
   "type": "module",
-  "main": "extensions/index.js",
-  "types": "extensions/index.d.ts",
-  "exports": {
-    ".": {
-      "import": "./extensions/index.js",
-      "types": "./extensions/index.d.ts"
-    }
-  },
   "keywords": [
     "pi",
     "pi-coding-agent",
@@ -33,22 +25,20 @@
   },
   "homepage": "https://github.com/imsus/pi-extension-minimax-coding-plan-mcp#readme",
   "dependencies": {
-    "@sinclair/typebox": "^0.33.0"
+    "@sinclair/typebox": "^0.34.48"
   },
   "devDependencies": {
     "@mariozechner/pi-coding-agent": "^0.50.3",
     "@mariozechner/pi-tui": "^0.50.3",
-    "@types/node": "^20.0.0",
-    "typescript": "^5.0.0"
+    "@types/node": "^25.1.0",
+    "typescript": "^5.9.3"
   },
   "engines": {
     "node": ">=18.0.0"
   },
   "scripts": {
     "build": "tsc",
-    "dev": "tsc --watch",
-    "test": "echo \"Error: no test specified\" && exit 1",
-    "prepublishOnly": "npm run build"
+    "dev": "tsc --watch"
   },
   "publishConfig": {
     "access": "public"
