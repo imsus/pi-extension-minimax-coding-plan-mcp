@@ -1,9 +1,13 @@
 # Dependencies
 node_modules/
 
-# Build outputs
-dist/
-extensions/
+# Build outputs (compiled JS files)
+*.js
+!extensions/index.js
+*.d.ts
+!extensions/index.d.ts
+*.js.map
+!extensions/index.js.map
 *.tsbuildinfo
 
 # IDE

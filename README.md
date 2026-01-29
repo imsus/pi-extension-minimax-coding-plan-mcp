@@ -307,13 +307,16 @@ Skills are automatically included in the system prompt when relevant.
 
 ```
 pi-extension-minimax-coding-plan-mcp/
-├── src/
-│   └── index.ts              # Main extension code
-├── extensions/               # Compiled extension (auto-discovered by pi)
-│   └── index.js
+├── extensions/               # Extension source and compiled output
+│   ├── index.ts              # Source code
+│   ├── index.js              # Compiled JavaScript
+│   ├── index.d.ts            # TypeScript declarations
+│   └── index.js.map          # Source map
 ├── skills/                   # Skills directory (auto-discovered by pi)
-│   ├── web-search/SKILL.md   # Web search skill guide
-│   └── image-understanding/SKILL.md  # Image understanding skill guide
+│   ├── minimax-web-search/
+│   │   └── SKILL.md          # Web search skill
+│   └── minimax-image-understanding/
+│       └── SKILL.md          # Image understanding skill
 ├── package.json              # npm package config
 ├── tsconfig.json             # TypeScript config
 ├── REVERSE_ENGINEERING.md    # Reverse engineering documentation
@@ -326,7 +329,7 @@ pi-extension-minimax-coding-plan-mcp/
 # Install dependencies
 npm install
 
-# Build TypeScript
+# Build TypeScript (outputs to extensions/)
 npm run build
 
 # Watch mode for development
@@ -341,7 +344,7 @@ npm run build
 
 # Test locally with pi
 pi
-# Extension auto-loads from dist/index.js
+# Extension auto-loads from extensions/index.js
 ```
 
 ### Publishing

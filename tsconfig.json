@@ -5,7 +5,7 @@
     "moduleResolution": "bundler",
     "lib": ["ES2022"],
     "outDir": "./extensions",
-    "rootDir": "./src",
+    "rootDir": "./extensions",
     "strict": false,
     "esModuleInterop": true,
     "skipLibCheck": true,
@@ -17,6 +17,6 @@
     "noImplicitAny": false,
     "types": ["node"]
   },
-  "include": ["src/**/*"],
-  "exclude": ["node_modules", "extensions"]
+  "include": ["extensions/**/*"],
+  "exclude": ["node_modules"]
 }
