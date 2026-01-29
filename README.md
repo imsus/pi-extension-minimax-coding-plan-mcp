@@ -4,13 +4,16 @@
 ![npm downloads](https://img.shields.io/npm/dm/pi-minimax-mcp)
 ![License](https://img.shields.io/npm/l/pi-minimax-mcp)
 
-MiniMax MCP (Model Context Protocol) extension for [pi coding agent](https://github.com/badlogic/pi-mono) - provides **web_search** and **understand_image** tools.
+MiniMax MCP (Model Context Protocol) extension for [pi coding agent](https://github.com/badlogic/pi-mono) that provides AI-powered web search and image understanding capabilities.
+
+Since pi doesn't natively support MCP, this extension bridges that gap by implementing the [MiniMax MCP API](https://platform.minimax.io/docs/coding-plan/mcp-guide) directly as pi tools.
 
 ## Features
 
-- 🔍 **Web Search** - Search the web for information and get results with suggestions
-- 🖼 **Image Understanding** - Analyze images with AI, extract text, describe content
-- ⚡ **Easy Configuration** - Configure via command or environment variables
+- 🔍 **Web Search** - Search the web for current information with intelligent results and suggestions
+- 🖼️ **Image Understanding** - Analyze images with AI for descriptions, OCR, code extraction, and visual analysis
+- 📖 **Built-in Skills** - Guides the LLM on when and how to use each tool effectively
+- ⚡ **Easy Configuration** - Configure via environment variables or pi settings files
 - 🔄 **Hot Reload** - Changes apply without restarting pi
 - 🎨 **Rich UI** - Custom rendering with progress indicators and status updates
 
@@ -19,6 +22,16 @@ MiniMax MCP (Model Context Protocol) extension for [pi coding agent](https://git
 - [pi coding agent](https://github.com/badlogic/pi-mono) installed
 - [MiniMax Coding Plan subscription](https://platform.minimax.io/subscribe/coding-plan)
 - Node.js >= 18.0.0
+
+## Why This Extension?
+
+The [MiniMax Coding Plan](https://platform.minimax.io/subscribe/coding-plan) provides powerful MCP tools for web search and image understanding. However, pi doesn't natively support MCP protocol.
+
+This extension implements those same capabilities as native pi tools, so you get:
+- The same MiniMax MCP functionality you love
+- Full integration with pi's tool system
+- Custom rendering and progress indicators
+- Built-in skills to help the LLM use tools effectively
 
 ## Installation
 
@@ -119,7 +132,7 @@ pi
 
 This stores the key in memory only and will be lost when pi exits. For permanent storage, use environment variables or settings files.
 
-### Configuration Options
+### Configuration Commands
 
 ```bash
 # Show help
@@ -147,28 +160,34 @@ Shows current configuration status and available tools.
 
 ### Web Search
 
-Search for information:
+Search for current information:
 
 ```
-Search the web for TypeScript best practices 2024
+Search the web for TypeScript best practices 2025
 
 web_search({
-  query: "How to configure pi coding agent extensions"
+  query: "latest React 19 features announcement"
 })
 ```
 
 Returns search results with titles, URLs, snippets, and suggestions.
+
+**When to use:**
+- Current events and news
+- Latest releases and updates
+- Fact verification with recent information
+- Technical documentation that may have changed
 
 ### Image Understanding
 
 Analyze images with AI:
 
 ```
-Understand this screenshot: https://example.com/screenshot.png
-"What's in this image?"
+Understand this screenshot
 
-web_search({
-  query: "React server components tutorial"
+understand_image({
+  prompt: "What error is shown in this screenshot?",
+  image_url: "https://example.com/error.png"
 })
 ```
 
@@ -178,12 +197,12 @@ web_search({
 - Maximum size: 20MB
 - Sources: HTTP/HTTPS URLs or local file paths
 
-#### Example Prompts
+#### Example Use Cases
 
 ```typescript
 // Describe image content
 understand_image({
-  prompt: "Describe what's in this image",
+  prompt: "Describe what's in this image in detail",
   image_url: "https://example.com/photo.jpg"
 })
 
@@ -199,12 +218,25 @@ understand_image({
   image_url: "https://example.com/mockup.png"
 })
 
-// Code understanding
+// Code from screenshot
 understand_image({
-  prompt: "What code is shown in this screenshot?",
+  prompt: "What code is shown in this screenshot? Transcribe it exactly.",
   image_url: "./error-screenshot.jpg"
 })
+
+// Debug errors
+understand_image({
+  prompt: "What is the error message and stack trace in this screenshot?",
+  image_url: "./bug-screenshot.png"
+})
 ```
+
+**When to use:**
+- Screenshots of errors or UI issues
+- Diagrams, charts, or visual content
+- Extracting text from images (OCR)
+- Analyzing code in screenshots
+- Visual debugging
 
 ## Tools Reference
 
@@ -221,14 +253,14 @@ web_search({
 })
 ```
 
-**Returns:** List of search results with titles, URLs, snippets, and suggestions.
+**Returns:** List of search results with titles, URLs, snippets, and follow-up suggestions.
 
 ### understand_image
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
 | prompt | string | ✓ | Question or analysis request (1-1000 characters) |
-| image_url | string | ✓ | Image URL or local path |
+| image_url | string | ✓ | Image URL or local file path |
 
 **Example:**
 ```typescript
@@ -238,7 +270,7 @@ understand_image({
 })
 ```
 
-**Returns:** AI analysis of the image content.
+**Returns:** AI analysis of the image content based on your prompt.
 
 ## Extension Commands
 
@@ -248,21 +280,37 @@ understand_image({
 | `/minimax-status` | Show configuration status |
 | `/reload` | Hot reload extension (built-in) |
 
-## Development
+## Skills
 
-### Project Structure
+This extension includes built-in skills to help the LLM understand when and how to use each tool:
+
+- `/skill:minimax-web-search` - Guidance on effective web search queries
+- `/skill:minimax-image-understanding` - Tips for image analysis prompts
+
+Skills are automatically included in the system prompt when relevant.
+
+## Learn More
+
+- [MiniMax MCP Documentation](https://platform.minimax.io/docs/coding-plan/mcp-guide) - Official MCP API guide
+- [MiniMax Coding Plan](https://platform.minimax.io/subscribe/coding-plan) - Subscribe to access MCP tools
+- [pi coding agent](https://github.com/badlogic/pi-mono) - The coding agent this extension supports
+
+## Project Structure
 
 ```
 pi-minimax-mcp/
 ├── src/
-│   └── index.ts          # Main extension code
-├── dist/                  # Compiled JavaScript (after build)
-├── package.json           # npm package config
-├── tsconfig.json          # TypeScript config
-└── README.md             # This file
+│   └── index.ts              # Main extension code
+├── skills/
+│   ├── web-search/SKILL.md   # Web search skill guide
+│   └── image-understanding/SKILL.md  # Image understanding skill guide
+├── dist/                      # Compiled JavaScript (after build)
+├── package.json               # npm package config
+├── tsconfig.json              # TypeScript config
+└── README.md                  # This file
 ```
 
-### Build
+## Development
 
 ```bash
 # Install dependencies
@@ -281,7 +329,7 @@ npm run dev
 # Build first
 npm run build
 
-# Test locally
+# Test locally with pi
 pi
 # Extension auto-loads from dist/index.js
 ```
@@ -337,7 +385,7 @@ understand_image({
 1. Fork the repository
 2. Create feature branch (`git checkout -b feature/amazing-feature`)
 3. Commit changes (`git commit -m 'Add amazing feature'`)
-4. Push to branch (`git push origin feature/amazing-feature`)
+4. Push to branch (`git push origin feature/amazing-feature'`)
 5. Open Pull Request
 
 ## License
@@ -352,11 +400,12 @@ MIT License - see [LICENSE](LICENSE) file for details.
 
 ## Changelog
 
-### v1.0.0 (2024-01-29)
+### v1.0.0 (2025-01-29)
 
 - ✨ Initial release
-- 🔍 web_search tool
-- 🖼 understand_image tool
-- ⚙️ Configuration commands
+- 🔍 web_search tool with rich results
+- 🖼️ understand_image tool with AI analysis
+- 📖 Built-in skills for tool guidance
+- ⚙️ Configuration commands (/minimax-configure, /minimax-status)
 - 🎨 Rich UI with custom rendering
 - 🔄 Hot reload support
