@@ -51,52 +51,57 @@ By analyzing the Python implementation, this extension recreates the same functi
 
 ## Installation
 
-### Option 1: npm (Recommended)
+Use the `pi install` command to install packages from npm, git, or HTTPS URLs.
+
+### Install from npm
 
 ```bash
-# Install the package
-npm install @imsus/pi-extension-minimax-coding-plan-mcp
+pi install npm:@imsus/pi-extension-minimax-coding-plan-mcp
 ```
 
-Add to your pi settings (`~/.pi/settings.json`):
-
-```json
-{
-  "packages": ["npm:@imsus/pi-extension-minimax-coding-plan-mcp@latest"]
-}
-```
-
-### Option 2: Git
+### Install from git
 
 ```bash
-# Clone the repository
-git clone https://github.com/imsus/pi-extension-minimax-coding-plan-mcp.git
-cd pi-extension-minimax-coding-plan-mcp
-npm install
+pi install git:https://github.com/imsus/pi-extension-minimax-coding-plan-mcp
 ```
 
-Add to your pi settings (`~/.pi/settings.json`):
-
-```json
-{
-  "packages": ["git:https://github.com/imsus/pi-extension-minimax-coding-plan-mcp.git"]
-}
-```
-
-### Option 3: Local Development
-
-Clone and link locally:
+Or with a version tag:
 
 ```bash
-git clone https://github.com/imsus/pi-extension-minimax-coding-plan-mcp.git
-cd pi-extension-minimax-coding-plan-mcp
-npm install
-npm link
+pi install git:https://github.com/imsus/pi-extension-minimax-coding-plan-mcp@v1.0.0
+```
 
-# Add to pi settings
-echo '["$(pwd)"]' > ~/.pi-extensions-path
-# Or add directly to ~/.pi/settings.json:
-# { "packages": ["/path/to/pi-extension-minimax-coding-plan-mcp"] }
+### Install from HTTPS URL
+
+```bash
+pi install https://github.com/imsus/pi-extension-minimax-coding-plan-mcp
+```
+
+### Project Installation
+
+Add `-l` flag to install to project settings (`.pi/settings.json`):
+
+```bash
+pi install -l npm:@imsus/pi-extension-minimax-coding-plan-mcp
+```
+
+Project settings can be shared with your team, and pi will auto-install missing packages on startup.
+
+### Try Without Installing
+
+Use `--extension` or `-e` to try the package without installing:
+
+```bash
+pi -e npm:@imsus/pi-extension-minimax-coding-plan-mcp
+pi -e git:https://github.com/imsus/pi-extension-minimax-coding-plan-mcp
+```
+
+### Manage Packages
+
+```bash
+pi list              # show installed packages
+pi update            # update all non-pinned packages
+pi remove npm:@imsus/pi-extension-minimax-coding-plan-mcp  # remove a package
 ```
 
 ## Configuration
@@ -393,6 +398,17 @@ Make sure the `~/.pi/agent/auth.json` file has the correct format:
 ```
 
 Use `/minimax-configure --show` to check if your key is configured correctly.
+
+### Extension Not Updating
+
+If changes don't appear after updating, clear the cached version:
+
+```bash
+# Remove the cached git repository
+rm -rf ~/.pi/agent/git/github.com/imsus/pi-extension-minimax-coding-plan-mcp
+
+# Restart pi to re-clone the latest version
+```
 
 ## Contributing
 
