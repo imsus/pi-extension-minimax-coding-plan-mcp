@@ -50,7 +50,6 @@ import { promisify } from "util";
 const readFile = promisify(readFileCallback);
 import { join } from "path";
 import { homedir } from "os";
-import { chmodSync } from "fs";
 
 /**
  * Configuration state for the MiniMax extension
