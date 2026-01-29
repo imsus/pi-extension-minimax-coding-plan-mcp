@@ -307,18 +307,14 @@ Skills are automatically included in the system prompt when relevant.
 
 ```
 pi-extension-minimax-coding-plan-mcp/
-├── extensions/               # Extension source and compiled output
-│   ├── index.ts              # Source code
-│   ├── index.js              # Compiled JavaScript
-│   ├── index.d.ts            # TypeScript declarations
-│   └── index.js.map          # Source map
+├── extensions/               # TypeScript extension (loaded directly by pi)
+│   └── index.ts              # Source code
 ├── skills/                   # Skills directory (auto-discovered by pi)
 │   ├── minimax-web-search/
 │   │   └── SKILL.md          # Web search skill
 │   └── minimax-image-understanding/
 │       └── SKILL.md          # Image understanding skill
 ├── package.json              # npm package config
-├── tsconfig.json             # TypeScript config
 ├── REVERSE_ENGINEERING.md    # Reverse engineering documentation
 └── README.md                 # This file
 ```
@@ -329,22 +325,11 @@ pi-extension-minimax-coding-plan-mcp/
 # Install dependencies
 npm install
 
-# Build TypeScript (outputs to extensions/)
-npm run build
-
-# Watch mode for development
-npm run dev
+# Start pi - it loads TypeScript directly
+pi
 ```
 
-### Testing
-
-```bash
-# Build first
-npm run build
-
-# Test locally with pi
-pi
-# Extension auto-loads from extensions/index.js
+No build step needed! pi loads `.ts` files directly from the `extensions/` directory.
 ```
 
 ### Publishing

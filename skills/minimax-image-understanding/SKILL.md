@@ -1,9 +1,6 @@
 ---
 name: minimax-image-understanding
 description: Analyze images using AI with MiniMax understand_image tool
-parameters:
-  prompt: Question or analysis request for the image
-  image_url: Image URL or local file path
 ---
 
 # MiniMax Image Understanding Skill

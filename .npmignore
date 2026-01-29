@@ -1,44 +1,5 @@
-# Dependencies
-node_modules/
-
-# Build outputs
-dist/
-*.tsbuildinfo
-
-# IDE
-.vscode/
-.idea/
-*.swp
-*.swo
-*~
-
-# OS
-.DS_Store
-Thumbs.db
-
-# Logs
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-
-# Testing
-coverage/
-.nyc_output/
-
-# Temporary
-*.tmp
-*.temp
-.env
-
-# TypeScript
-*.ts
-!src/**/*.ts
-
-# Package
+# Everything except package.json and package files
+*
 !package.json
-!README.md
-!LICENSE
-
-# Git
-.git/
-.gitignore
+!extensions/
+!skills/

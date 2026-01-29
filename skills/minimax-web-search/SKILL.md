@@ -1,8 +1,6 @@
 ---
 name: minimax-web-search
 description: Search the web for current information using MiniMax web_search tool
-parameters:
-  query: Search query string (2-500 characters)
 ---
 
 # MiniMax Web Search Skill
