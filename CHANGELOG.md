@@ -1,6 +1,6 @@
 # Release Notes v1.0.0
 
-**Initial Release** - January 29, 2025
+**Initial Release** - January 29, 2026
 
 ## Overview
 
@@ -13,7 +13,7 @@
 Search the web for current information with rich results:
 
 ```typescript
-web_search({ query: "TypeScript best practices 2025" })
+web_search({ query: "TypeScript best practices 2026" })
 ```
 
 **Returns:**
@@ -95,10 +95,10 @@ This extension includes built-in skills to guide the LLM:
 
 ### API Endpoints
 
-| Tool | Endpoint | Payload |
-|------|----------|---------|
-| web_search | `POST {host}/v1/coding_plan/search` | `{"q": query}` |
-| understand_image | `POST {host}/v1/coding_plan/vlm` | `{"prompt": p, "image_url": base64}` |
+| Tool             | Endpoint                            | Payload                              |
+| ---------------- | ----------------------------------- | ------------------------------------ |
+| web_search       | `POST {host}/v1/coding_plan/search` | `{"q": query}`                       |
+| understand_image | `POST {host}/v1/coding_plan/vlm`    | `{"prompt": p, "image_url": base64}` |
 
 ### Authentication
 

@@ -175,7 +175,7 @@ Shows current configuration status and available tools.
 Search for current information:
 
 ```
-Search the web for TypeScript best practices 2025
+Search the web for TypeScript best practices 2026
 
 web_search({
   query: "latest React 19 features announcement"
@@ -434,7 +434,7 @@ MIT License - see [LICENSE](LICENSE) file for details.
 
 ## Changelog
 
-### v1.0.0 (2025-01-29)
+### v1.0.0 (2026-01-29)
 
 - ✨ Initial release
 - 🔍 web_search tool with rich results
