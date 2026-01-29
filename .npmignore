@@ -1,5 +1,0 @@
-# Everything except package.json and package files
-*
-!package.json
-!extensions/
-!skills/

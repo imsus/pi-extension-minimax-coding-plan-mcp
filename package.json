@@ -40,5 +40,13 @@
   },
   "publishConfig": {
     "access": "public"
-  }
+  },
+  "files": [
+    "extensions/",
+    "skills/",
+    "package.json",
+    "README.md",
+    "CHANGELOG.md",
+    "LICENSE"
+  ]
 }
