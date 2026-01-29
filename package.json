@@ -1,0 +1,63 @@
+{
+  "name": "pi-minimax-mcp",
+  "version": "1.0.0",
+  "description": "MiniMax MCP extension for pi coding agent - provides web_search and understand_image tools",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "pi": {
+    "extensions": [
+      "./dist/index.js"
+    ],
+    "skills": [
+      "./skills/web-search/SKILL.md",
+      "./skills/image-understanding/SKILL.md"
+    ]
+  },
+  "keywords": [
+    "pi",
+    "pi-coding-agent",
+    "minimax",
+    "mcp",
+    "web-search",
+    "image-understanding",
+    "extension"
+  ],
+  "author": "imsus <github@imsus.com>",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/imsus/pi-minimax-extension.git"
+  },
+  "bugs": {
+    "url": "https://github.com/imsus/pi-minimax-extension/issues"
+  },
+  "homepage": "https://github.com/imsus/pi-minimax-extension#readme",
+  "dependencies": {
+    "@sinclair/typebox": "^0.33.0"
+  },
+  "devDependencies": {
+    "@mariozechner/pi-coding-agent": "^0.50.3",
+    "@mariozechner/pi-tui": "^0.50.3",
+    "@types/node": "^20.0.0",
+    "typescript": "^5.0.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "prepublishOnly": "npm run build"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}
