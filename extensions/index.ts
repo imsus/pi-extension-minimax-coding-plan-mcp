@@ -649,23 +649,7 @@ Examples:
         );
       }
 
-      // Show progress with confirmation for potentially expensive operations
-      const isComplexTask = /describe|analyze|extract|recognize|read|transcribe/i.test(params.prompt);
-
-      if (isComplexTask) {
-        const confirmAnalyze = await ctx.ui.confirm(
-          "Analyze Image?",
-          `This analysis may take time. Continue with: "${params.prompt.slice(0, 50)}..."?`
-        );
-
-        if (!confirmAnalyze) {
-          return {
-            content: [{ type: "text" as const, text: "Analysis cancelled" }],
-            details: { status: "cancelled" } satisfies MiniMaxToolDetails,
-          };
-        }
-      }
-
+      // Show progress
       onUpdate?.({
         content: [{ type: "text" as const, text: `🖼 Converting image to base64...` }],
         details: { status: "processing" } satisfies MiniMaxToolDetails,

@@ -1,11 +1,19 @@
 ---
 name: minimax-web-search
-description: Search the web for current information using MiniMax web_search tool
+description: Search the web for current information using the web_search tool
 ---
 
 # MiniMax Web Search Skill
 
 Use this skill when you need to find current, real-time, or authoritative information that may have changed since my knowledge cutoff.
+
+## How to Use
+
+Call the `web_search` tool directly with a query:
+
+```
+web_search({ query: "your search query" })
+```
 
 ## When to Use
 

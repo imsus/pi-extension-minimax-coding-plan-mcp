@@ -1,11 +1,22 @@
 ---
 name: minimax-image-understanding
-description: Analyze images using AI with MiniMax understand_image tool
+description: Analyze images using AI with the understand_image tool
 ---
 
 # MiniMax Image Understanding Skill
 
 Use this skill when you need to analyze, describe, or extract information from images.
+
+## How to Use
+
+Call the `understand_image` tool directly with a prompt and image URL:
+
+```
+understand_image({
+  prompt: "Your question about the image",
+  image_url: "https://example.com/image.png"
+})
+```
 
 ## When to Use
 
