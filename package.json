@@ -3,6 +3,9 @@
   "version": "1.0.0",
   "description": "MiniMax Coding Plan extension for pi coding agent - provides web_search and understand_image tools",
   "type": "module",
+  "overrides": {
+    "node-domexception": "^2.0.0"
+  },
   "keywords": [
     "pi",
     "pi-coding-agent",
