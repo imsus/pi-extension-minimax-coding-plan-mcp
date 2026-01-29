@@ -31,8 +31,6 @@
     "@mariozechner/pi-coding-agent": "^0.50.3",
     "@mariozechner/pi-tui": "^0.50.3",
     "@types/node": "^25.1.0",
-    "typedoc": "^0.28.16",
-    "typedoc-plugin-versions": "^0.2.4",
     "typescript": "^5.9.3"
   },
   "engines": {
@@ -40,8 +38,7 @@
   },
   "scripts": {
     "build": "tsc",
-    "dev": "tsc --watch",
-    "docs": "typedoc"
+    "dev": "tsc --watch"
   },
   "publishConfig": {
     "access": "public"

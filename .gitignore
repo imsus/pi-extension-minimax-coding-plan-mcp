@@ -6,9 +6,6 @@ dist/
 extensions/
 *.tsbuildinfo
 
-# Generated documentation
-docs/
-
 # IDE
 .vscode/
 .idea/
