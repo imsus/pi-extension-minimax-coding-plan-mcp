@@ -22,7 +22,9 @@
 import type { ExtensionAPI } from "@mariozechner/pi-coding-agent";
 import { Text } from "@mariozechner/pi-tui";
 import { Type } from "@sinclair/typebox";
-import { readFileSync, existsSync } from "fs";
+import { readFileSync, existsSync, readFile as readFileCallback } from "fs";
+import { promisify } from "util";
+const readFile = promisify(readFileCallback);
 import { join } from "path";
 import { homedir } from "os";
 
@@ -79,6 +81,64 @@ function loadApiKeyFromSettings(): string | null {
   }
 
   return null;
+}
+
+/**
+ * Convert image to base64 data URL format
+ * Supports: HTTP/HTTPS URLs, local file paths, and existing base64 data URLs
+ */
+async function processImageUrl(imageUrl: string): Promise<string> {
+  // Remove @ prefix if present
+  if (imageUrl.startsWith("@")) {
+    imageUrl = imageUrl.slice(1);
+  }
+
+  // If already in base64 data URL format, pass through
+  if (imageUrl.startsWith("data:")) {
+    return imageUrl;
+  }
+
+  // Handle HTTP/HTTPS URLs
+  if (imageUrl.startsWith("http://") || imageUrl.startsWith("https://")) {
+    const response = await fetch(imageUrl);
+    if (!response.ok) {
+      throw new Error(`Failed to download image: ${response.statusText}`);
+    }
+    
+    const contentType = response.headers.get("content-type")?.toLowerCase() || "";
+    let imageFormat = "jpeg";
+    if (contentType.includes("png")) {
+      imageFormat = "png";
+    } else if (contentType.includes("webp")) {
+      imageFormat = "webp";
+    } else if (contentType.includes("jpg") || contentType.includes("jpeg")) {
+      imageFormat = "jpeg";
+    }
+
+    const imageData = await response.arrayBuffer();
+    const base64Data = Buffer.from(imageData).toString("base64");
+    return `data:image/${imageFormat};base64,${base64Data}`;
+  }
+
+  // Handle local file paths
+  else {
+    if (!existsSync(imageUrl)) {
+      throw new Error(`Local image file does not exist: ${imageUrl}`);
+    }
+
+    const imageData = await readFile(imageUrl, null);
+    let imageFormat = "jpeg";
+    if (imageUrl.toLowerCase().endsWith(".png")) {
+      imageFormat = "png";
+    } else if (imageUrl.toLowerCase().endsWith(".webp")) {
+      imageFormat = "webp";
+    } else if (imageUrl.toLowerCase().endsWith(".jpg") || imageUrl.toLowerCase().endsWith(".jpeg")) {
+      imageFormat = "jpeg";
+    }
+
+    const base64Data = Buffer.from(imageData).toString("base64");
+    return `data:image/${imageFormat};base64,${base64Data}`;
+  }
 }
 
 export default function (pi: ExtensionAPI) {
@@ -251,18 +311,19 @@ Your API key will only be stored in memory during this session.
     if (!config.apiKey) return false;
 
     try {
-      const testEndpoint = `${config.apiHost}/mcp/ping`;
+      const testEndpoint = `${config.apiHost}/v1/coding_plan/search`;
       const response = await fetch(testEndpoint, {
-        method: "GET",
+        method: "POST",
         headers: {
+          "Content-Type": "application/json",
           Authorization: `Bearer ${config.apiKey}`,
+          "MM-API-Source": "pi-minimax-mcp",
         },
+        body: JSON.stringify({ q: "test" }),
       });
 
-      // Some APIs return 404 for ping but that's OK - just means endpoint exists
       return response.status !== 401 && response.status !== 403;
     } catch {
-      // If we can't reach the endpoint, assume it's configured
       return true;
     }
   }
@@ -271,19 +332,24 @@ Your API key will only be stored in memory during this session.
   pi.registerTool({
     name: "web_search",
     label: "Web Search",
-    description: `Search the web for information based on a query. Returns search results and related suggestions.
+    description: `Search the web for information based on a query. Returns search results and related search suggestions.
 
 Usage:
-- web_search({ query: "TypeScript best practices 2024" })
+- web_search({ query: "TypeScript best practices 2025" })
 - web_search({ query: "How to configure pi coding agent" })
 
 Example:
 Query: "React server components tutorial"
-Returns: List of relevant web pages with titles, URLs, and snippets`,
+Returns: List of relevant web pages with titles, URLs, snippets, and date
+
+Tips:
+- Use 3-5 keywords for better results
+- Add current year for time-sensitive queries (e.g., "React 19 features 2025")
+- Be specific: "TypeScript 5.4 generics" instead of "TypeScript help"`,
 
     parameters: Type.Object({
       query: Type.String({
-        description: "Search query",
+        description: "Search query string. Use 3-5 keywords. Add current year for time-sensitive queries.",
         minLength: 2,
         maxLength: 500,
       }),
@@ -312,13 +378,14 @@ Returns: List of relevant web pages with titles, URLs, and snippets`,
       });
 
       try {
-        const response = await fetch(`${config.apiHost}/mcp/web_search`, {
+        const response = await fetch(`${config.apiHost}/v1/coding_plan/search`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
             Authorization: `Bearer ${config.apiKey}`,
+            "MM-API-Source": "pi-minimax-mcp",
           },
-          body: JSON.stringify({ query: params.query.trim() }),
+          body: JSON.stringify({ q: params.query.trim() }),
           signal,
         });
 
@@ -330,7 +397,7 @@ Returns: List of relevant web pages with titles, URLs, and snippets`,
             config.configured = false;
             return createErrorResult(
               "Authentication failed",
-              "Invalid API key. Use /minimax-configure to update your credentials."
+              "Invalid API key. Check your API key and API host. Global: https://api.minimax.io, Mainland China: https://api.minimaxi.com"
             );
           }
 
@@ -340,7 +407,29 @@ Returns: List of relevant web pages with titles, URLs, and snippets`,
           );
         }
 
-        const result = await response.json() as { results?: Array<unknown>; suggestions?: Array<unknown> };
+        const result = await response.json() as any;
+        
+        // Check MiniMax API error code
+        const baseResp = result.base_resp || {};
+        if (baseResp.status_code !== 0) {
+          switch (baseResp.status_code) {
+            case 1004:
+              return createErrorResult(
+                "Authentication error",
+                `${baseResp.status_msg}. Check your API key and API host. Trace-Id: ${response.headers.get("Trace-Id")}`
+              );
+            case 2038:
+              return createErrorResult(
+                "Verification required",
+                `${baseResp.status_msg}. Complete real-name verification at https://platform.minimaxi.com/user-center/basic-information. Trace-Id: ${response.headers.get("Trace-Id")}`
+              );
+            default:
+              return createErrorResult(
+                `API error (${baseResp.status_code})`,
+                `${baseResp.status_msg}. Trace-Id: ${response.headers.get("Trace-Id")}`
+              );
+          }
+        }
 
         // Format the results
         const formattedResults = formatSearchResults(result);
@@ -350,7 +439,7 @@ Returns: List of relevant web pages with titles, URLs, and snippets`,
           details: {
             status: "complete",
             query: params.query,
-            resultCount: result.results?.length ?? 0,
+            resultCount: result.organic?.length ?? 0,
             raw: result,
           } satisfies MiniMaxToolDetails,
         };
@@ -409,7 +498,12 @@ Usage:
     image_url: "/path/to/local/image.jpg"
   })
 
-Supported formats: JPEG, PNG, GIF, WebP (max 20MB)
+Image sources:
+- HTTP/HTTPS URLs: "https://example.com/image.jpg"
+- Local file paths: "/Users/username/Documents/image.jpg" or "images/photo.png"
+- Removes @ prefix if present in file paths
+
+Supported formats: JPEG, PNG, WebP (max size varies)
 
 Examples:
 - Analyze screenshots, diagrams, or photos
@@ -424,7 +518,7 @@ Examples:
         maxLength: 1000,
       }),
       image_url: Type.String({
-        description: "Image source - HTTP/HTTPS URL or local file path",
+        description: "Image source - HTTP/HTTPS URL or local file path. Removes @ prefix if present.",
         minLength: 1,
         maxLength: 2000,
       }),
@@ -446,18 +540,8 @@ Examples:
         );
       }
 
-      // Validate image URL format
-      const urlPattern = /^https?:\/\/.+|^[\/\.].+/;
-      if (!urlPattern.test(params.image_url)) {
-        return createErrorResult(
-          "Invalid image URL",
-          "Image URL must be an HTTP/HTTPS URL or a local file path starting with / or ./"
-        );
-      }
-
       // Show progress with confirmation for potentially expensive operations
-      const isLargePrompt = params.prompt.length > 200;
-      const isComplexTask = /describe|analyze|extract|recognize/i.test(params.prompt);
+      const isComplexTask = /describe|analyze|extract|recognize|read|transcribe/i.test(params.prompt);
 
       if (isComplexTask) {
         const confirmAnalyze = await ctx.ui.confirm(
@@ -474,20 +558,29 @@ Examples:
       }
 
       onUpdate?.({
-        content: [{ type: "text" as const, text: `🖼 Analyzing image...` }],
-        details: { status: "analyzing" } satisfies MiniMaxToolDetails,
+        content: [{ type: "text" as const, text: `🖼 Converting image to base64...` }],
+        details: { status: "processing" } satisfies MiniMaxToolDetails,
       });
 
       try {
-        const response = await fetch(`${config.apiHost}/mcp/understand_image`, {
+        // Process image to base64 data URL
+        const base64ImageUrl = await processImageUrl(params.image_url);
+
+        onUpdate?.({
+          content: [{ type: "text" as const, text: `🖼 Analyzing image...` }],
+          details: { status: "analyzing" } satisfies MiniMaxToolDetails,
+        });
+
+        const response = await fetch(`${config.apiHost}/v1/coding_plan/vlm`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
             Authorization: `Bearer ${config.apiKey}`,
+            "MM-API-Source": "pi-minimax-mcp",
           },
           body: JSON.stringify({
             prompt: params.prompt,
-            image_url: params.image_url,
+            image_url: base64ImageUrl,
           }),
           signal,
         });
@@ -500,7 +593,7 @@ Examples:
             config.configured = false;
             return createErrorResult(
               "Authentication failed",
-              "Invalid API key. Use /minimax-configure to update your credentials."
+              "Invalid API key. Check your API key and API host. Global: https://api.minimax.io, Mainland China: https://api.minimaxi.com"
             );
           }
 
@@ -510,10 +603,41 @@ Examples:
           );
         }
 
-        const result = await response.json() as { analysis?: string };
+        const result = await response.json() as any;
+        
+        // Check MiniMax API error code
+        const baseResp = result.base_resp || {};
+        if (baseResp.status_code !== 0) {
+          switch (baseResp.status_code) {
+            case 1004:
+              return createErrorResult(
+                "Authentication error",
+                `${baseResp.status_msg}. Check your API key and API host. Trace-Id: ${response.headers.get("Trace-Id")}`
+              );
+            case 2038:
+              return createErrorResult(
+                "Verification required",
+                `${baseResp.status_msg}. Complete real-name verification at https://platform.minimaxi.com/user-center/basic-information. Trace-Id: ${response.headers.get("Trace-Id")}`
+              );
+            default:
+              return createErrorResult(
+                `API error (${baseResp.status_code})`,
+                `${baseResp.status_msg}. Trace-Id: ${response.headers.get("Trace-Id")}`
+              );
+          }
+        }
+
+        const content = result.content;
+        
+        if (!content) {
+          return createErrorResult(
+            "No content returned",
+            "The VLM API didn't return any analysis content"
+          );
+        }
 
         return {
-          content: [{ type: "text" as const, text: result.analysis ?? JSON.stringify(result) }],
+          content: [{ type: "text" as const, text: content }],
           details: {
             status: "complete",
             prompt: params.prompt,
@@ -581,17 +705,18 @@ function formatSearchResults(result: any): string {
 
   let output = "";
 
-  // Handle different response formats
-  if (result.results && Array.isArray(result.results)) {
+  // Handle organic results
+  if (result.organic && Array.isArray(result.organic)) {
     output = "🔍 Search Results\n\n";
     
-    result.results.forEach((item: any, index: number) => {
+    result.organic.forEach((item: any, index: number) => {
       const title = item.title ?? "No title";
-      const url = item.url ?? "N/A";
+      const link = item.link ?? "N/A";
       const snippet = item.snippet ?? "";
+      const date = item.date ?? "";
 
       output += `${index + 1}. ${title}\n`;
-      output += `   📎 ${url}\n`;
+      output += `   📎 ${link}\n`;
       
       if (snippet) {
         const truncatedSnippet = snippet.length > 200 
@@ -600,15 +725,20 @@ function formatSearchResults(result: any): string {
         output += `   ${truncatedSnippet}\n`;
       }
       
+      if (date) {
+        output += `   📅 ${date}\n`;
+      }
+      
       output += "\n";
     });
   }
 
-  // Check for suggestions
-  if (result.suggestions && Array.isArray(result.suggestions) && result.suggestions.length > 0) {
-    output += "💡 Suggestions:\n";
-    result.suggestions.forEach((suggestion: string, index: number) => {
-      output += `  ${index + 1}. ${suggestion}\n`;
+  // Check for related searches
+  if (result.related_searches && Array.isArray(result.related_searches) && result.related_searches.length > 0) {
+    output += "💡 Related Searches:\n";
+    result.related_searches.forEach((suggestion: any, index: number) => {
+      const query = suggestion.query ?? "";
+      output += `  ${index + 1}. ${query}\n`;
     });
     output += "\n";
   }

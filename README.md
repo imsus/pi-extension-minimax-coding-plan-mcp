@@ -1,8 +1,8 @@
-# pi-minimax-mcp
+# @imsus/pi-extension-minimax-coding-plan-mcp
 
-![npm version](https://img.shields.io/npm/v/pi-minimax-mcp)
-![npm downloads](https://img.shields.io/npm/dm/pi-minimax-mcp)
-![License](https://img.shields.io/npm/l/pi-minimax-mcp)
+![npm version](https://img.shields.io/npm/v/@imsus/pi-extension-minimax-coding-plan-mcp)
+![npm downloads](https://img.shields.io/npm/dm/@imsus/pi-extension-minimax-coding-plan-mcp)
+![License](https://img.shields.io/npm/l/@imsus/pi-extension-minimax-coding-plan-mcp)
 
 MiniMax MCP (Model Context Protocol) extension for [pi coding agent](https://github.com/badlogic/pi-mono) that provides AI-powered web search and image understanding capabilities.
 
@@ -23,6 +23,12 @@ Since pi doesn't natively support MCP, this extension bridges that gap by implem
 - [MiniMax Coding Plan subscription](https://platform.minimax.io/subscribe/coding-plan)
 - Node.js >= 18.0.0
 
+### Related Resources
+
+- **PyPI Package**: [minimax-coding-plan-mcp](https://pypi.org/project/minimax-coding-plan-mcp/) - The official Python MCP server this implementation is based on
+- **MiniMax Platform**: [api.minimax.io](https://api.minimax.io) - Global API endpoint
+- **MiniMax Platform (China)**: [api.minimaxi.com](https://api.minimaxi.com) - Mainland China API endpoint
+
 ## Why This Extension?
 
 The [MiniMax Coding Plan](https://platform.minimax.io/subscribe/coding-plan) provides powerful MCP tools for web search and image understanding. However, pi doesn't natively support MCP protocol.
@@ -33,20 +39,30 @@ This extension implements those same capabilities as native pi tools, so you get
 - Custom rendering and progress indicators
 - Built-in skills to help the LLM use tools effectively
 
+## About This Implementation
+
+This extension was **reverse-engineered** from the official [MiniMax Coding Plan MCP](https://pypi.org/project/minimax-coding-plan-mcp/) Python package. The original package provides MCP protocol tools that work with MCP-compatible clients like Claude Desktop, Cursor, and Windsurf.
+
+By analyzing the Python implementation, this extension recreates the same functionality directly as pi native tools, providing:
+- Identical API endpoints and behavior
+- Matching request/response formats
+- Consistent error handling
+- Seamless pi integration
+
 ## Installation
 
 ### Option 1: npm (Recommended)
 
 ```bash
 # Install the package
-npm install pi-minimax-mcp
+npm install @imsus/pi-extension-minimax-coding-plan-mcp
 ```
 
 Add to your pi settings (`~/.pi/settings.json`):
 
 ```json
 {
-  "packages": ["npm:pi-minimax-mcp@latest"]
+  "packages": ["npm:@imsus/pi-extension-minimax-coding-plan-mcp@latest"]
 }
 ```
 
@@ -54,8 +70,8 @@ Add to your pi settings (`~/.pi/settings.json`):
 
 ```bash
 # Clone the repository
-git clone https://github.com/imsus/pi-minimax-mcp.git
-cd pi-minimax-mcp
+git clone https://github.com/imsus/pi-extension-minimax-coding-plan-mcp.git
+cd pi-extension-minimax-coding-plan-mcp
 npm install
 ```
 
@@ -63,7 +79,7 @@ Add to your pi settings (`~/.pi/settings.json`):
 
 ```json
 {
-  "packages": ["git:https://github.com/imsus/pi-minimax-mcp.git"]
+  "packages": ["git:https://github.com/imsus/pi-extension-minimax-coding-plan-mcp.git"]
 }
 ```
 
@@ -72,24 +88,23 @@ Add to your pi settings (`~/.pi/settings.json`):
 Clone and link locally:
 
 ```bash
-git clone https://github.com/imsus/pi-minimax-mcp.git
-cd pi-minimax-mcp
+git clone https://github.com/imsus/pi-extension-minimax-coding-plan-mcp.git
+cd pi-extension-minimax-coding-plan-mcp
 npm install
 npm link
 
 # Add to pi settings
 echo '["$(pwd)"]' > ~/.pi-extensions-path
 # Or add directly to ~/.pi/settings.json:
-# { "packages": ["/path/to/pi-minimax-mcp"] }
+# { "packages": ["/path/to/pi-extension-minimax-coding-plan-mcp"] }
 ```
 
 ## Configuration
 
 ### Get Your API Key
 
-1. Visit [MiniMax Coding Plan subscription page](https://platform.minimax.io/subscribe/coding-plan)
-2. Subscribe to a plan
-3. Copy your API key from the dashboard
+1. If you haven't subscribed yet, visit [MiniMax Coding Plan](https://platform.minimax.io/subscribe/coding-plan) to subscribe
+2. Once subscribed, go to [API Key page](https://platform.minimax.io/user-center/payment/coding-plan) to get your API key
 
 ### Configuration Priority
 
@@ -242,9 +257,9 @@ understand_image({
 
 ### web_search
 
-| Parameter | Type | Required | Description |
-|-----------|------|----------|-------------|
-| query | string | ✓ | Search query (2-500 characters) |
+| Parameter | Type   | Required | Description                     |
+| --------- | ------ | -------- | ------------------------------- |
+| query     | string | ✓        | Search query (2-500 characters) |
 
 **Example:**
 ```typescript
@@ -257,10 +272,10 @@ web_search({
 
 ### understand_image
 
-| Parameter | Type | Required | Description |
-|-----------|------|----------|-------------|
-| prompt | string | ✓ | Question or analysis request (1-1000 characters) |
-| image_url | string | ✓ | Image URL or local file path |
+| Parameter | Type   | Required | Description                                      |
+| --------- | ------ | -------- | ------------------------------------------------ |
+| prompt    | string | ✓        | Question or analysis request (1-1000 characters) |
+| image_url | string | ✓        | Image URL or local file path                     |
 
 **Example:**
 ```typescript
@@ -274,11 +289,11 @@ understand_image({
 
 ## Extension Commands
 
-| Command | Description |
-|---------|-------------|
-| `/minimax-configure` | Configure API key |
-| `/minimax-status` | Show configuration status |
-| `/reload` | Hot reload extension (built-in) |
+| Command              | Description                     |
+| -------------------- | ------------------------------- |
+| `/minimax-configure` | Configure API key               |
+| `/minimax-status`    | Show configuration status       |
+| `/reload`            | Hot reload extension (built-in) |
 
 ## Skills
 
@@ -293,12 +308,13 @@ Skills are automatically included in the system prompt when relevant.
 
 - [MiniMax MCP Documentation](https://platform.minimax.io/docs/coding-plan/mcp-guide) - Official MCP API guide
 - [MiniMax Coding Plan](https://platform.minimax.io/subscribe/coding-plan) - Subscribe to access MCP tools
+- [minimax-coding-plan-mcp (PyPI)](https://pypi.org/project/minimax-coding-plan-mcp/) - Official Python MCP server
 - [pi coding agent](https://github.com/badlogic/pi-mono) - The coding agent this extension supports
 
 ## Project Structure
 
 ```
-pi-minimax-mcp/
+pi-extension-minimax-coding-plan-mcp/
 ├── src/
 │   └── index.ts              # Main extension code
 ├── skills/
@@ -307,6 +323,7 @@ pi-minimax-mcp/
 ├── dist/                      # Compiled JavaScript (after build)
 ├── package.json               # npm package config
 ├── tsconfig.json              # TypeScript config
+├── REVERSE_ENGINEERING.md     # Reverse engineering documentation
 └── README.md                  # This file
 ```
 
@@ -351,7 +368,7 @@ npm publish --tag beta
 
 ### API Key Not Working
 
-1. Verify your API key at https://platform.minimax.io/subscribe/coding-plan
+1. Get your API key at https://platform.minimax.io/user-center/payment/coding-plan
 2. Check key hasn't expired
 3. Ensure you have the Coding Plan subscription (not just MiniMax account)
 
@@ -367,6 +384,8 @@ npm publish --tag beta
 1. Check `/minimax-status` for configuration
 2. Verify network connectivity
 3. Check API key has required permissions
+4. For detailed error information, check the `Trace-Id` in error messages
+5. Compare behavior with [minimax-coding-plan-mcp](https://pypi.org/project/minimax-coding-plan-mcp/) if issues persist
 
 ### Local File Paths Not Working
 
@@ -394,9 +413,13 @@ MIT License - see [LICENSE](LICENSE) file for details.
 
 ## Support
 
-- 📖 [Documentation](https://github.com/imsus/pi-minimax-mcp#readme)
-- 🐛 [Issues](https://github.com/imsus/pi-minimax-mcp/issues)
-- 💬 [Discussions](https://github.com/imsus/pi-minimax-mcp/discussions)
+- 📖 [Documentation](https://github.com/imsus/pi-extension-minimax-coding-plan-mcp#readme)
+- 🐛 [Issues](https://github.com/imsus/pi-extension-minimax-coding-plan-mcp/issues)
+- 💬 [Discussions](https://github.com/imsus/pi-extension-minimax-coding-plan-mcp/discussions)
+
+---
+
+**npm Package**: [@imsus/pi-extension-minimax-coding-plan-mcp](https://www.npmjs.com/package/@imsus/pi-extension-minimax-coding-plan-mcp)
 
 ## Changelog
 

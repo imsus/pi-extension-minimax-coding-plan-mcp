@@ -38,6 +38,54 @@ understand_image({
 })
 ```
 
+## API Details
+
+**Endpoint**: `POST {api_host}/v1/coding_plan/vlm`
+
+**Request Body**:
+```json
+{
+  "prompt": "Your question about the image",
+  "image_url": "data:image/jpeg;base64,/9j/4AAQ..."
+}
+```
+
+**Response Format**:
+```json
+{
+  "content": "AI analysis of the image...",
+  "base_resp": {
+    "status_code": 0,
+    "status_msg": "success"
+  }
+}
+```
+
+## Image Processing
+
+The tool automatically handles three types of image inputs:
+
+1. **HTTP/HTTPS URLs**: Downloads the image and converts to base64
+   - Example: `https://example.com/image.jpg`
+
+2. **Local file paths**: Reads local files and converts to base64
+   - Absolute: `/Users/username/Documents/image.png`
+   - Relative: `images/photo.png`
+   - Removes `@` prefix if present
+
+3. **Base64 data URLs**: Passes through existing base64 data
+   - Example: `data:image/png;base64,iVBORw0KGgo...`
+
+## Image Formats
+
+Supported:
+- **JPEG** (.jpg, .jpeg)
+- **PNG** (.png)
+- **WebP** (.webp)
+
+Not supported:
+- PDF, GIF, PSD, SVG, and other formats
+
 ## Crafting Effective Prompts
 
 ### For Descriptions
@@ -51,7 +99,7 @@ understand_image({
 - "Identify the UI framework/components used"
 
 ### For Analysis
-- "Analyze this UI design and suggest improvements"
+- "Analyze this UI design. What is working well and what could be improved?"
 - "What emotions or mood does this image convey?"
 - "Compare this design to Material Design principles"
 
@@ -59,13 +107,6 @@ understand_image({
 - "Extract all text from this image"
 - "Read the error message in this screenshot"
 - "What does the label say in this image?"
-
-## Image Sources
-
-Supports:
-- **HTTP/HTTPS URLs**: Direct image links
-- **Local paths**: Absolute or relative paths to image files
-- **Base64**: Encoded images (if the URL scheme indicates it)
 
 ## Examples
 
@@ -93,9 +134,25 @@ understand_image({
 })
 ```
 
+### OCR
+```
+understand_image({
+  prompt: "Extract all text from this image",
+  image_url: "/Users/username/Documents/scan.png"
+})
+```
+
 ## Tips
 
 1. **Be specific** in your prompt about what you want to know
 2. **Mention format** if you need structured output (e.g., "list all elements")
 3. **Include context** if the image is part of a larger task
 4. **For screenshots**, specify if you need full-page or just a specific area
+5. **Complex analysis** may trigger a confirmation prompt (analyze, extract, describe, recognize, transcribe, read)
+
+## Error Handling
+
+- **Status code 1004**: Authentication error - check API key and region
+- **Status code 2038**: Real-name verification required
+- **Invalid image**: File doesn't exist or URL is inaccessible
+- **Unsupported format**: Image format not in JPEG, PNG, WebP
