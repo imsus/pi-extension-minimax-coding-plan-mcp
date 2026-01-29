@@ -116,36 +116,28 @@ The extension checks for the API key in this order:
    export MINIMAX_API_HOST="https://api.minimax.io"  # optional, default
    ```
 
-2. **Project settings** (`.pi/settings.json`) - overrides global
+2. **Auth file** (`~/.pi/agent/auth.json`) - persistent across sessions
    ```json
    {
      "minimax": {
+       "type": "api_key",
        "key": "your-api-key-here"
      }
    }
    ```
 
-3. **Global settings** (`~/.pi/agent/settings.json`)
-   ```json
-   {
-     "minimax": {
-       "key": "your-api-key-here"
-     }
-   }
-   ```
+> **Note:** Use `/minimax-configure` command to set up your API key interactively.
 
-> **Note:** Project settings take precedence over global settings.
+### In-Session Configuration
 
-### In-Session Configuration (Temporary)
-
-You can also set the API key temporarily during a session:
+Set or update your API key:
 
 ```bash
 pi
 /minimax-configure --key your-api-key-here
 ```
 
-This stores the key in memory only and will be lost when pi exits. For permanent storage, use environment variables or settings files.
+This saves to `~/.pi/agent/auth.json` for permanent storage.
 
 ### Configuration Commands
 
@@ -398,6 +390,20 @@ understand_image({
   image_url: "./screenshots/error.png"
 })
 ```
+
+### API Key Not Saved to auth.json
+
+Make sure the `~/.pi/agent/auth.json` file has the correct format:
+```json
+{
+  "minimax": {
+    "type": "api_key",
+    "key": "your-api-key-here"
+  }
+}
+```
+
+Use `/minimax-configure --show` to check if your key is configured correctly.
 
 ## Contributing
 

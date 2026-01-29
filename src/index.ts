@@ -22,11 +22,12 @@
 import type { ExtensionAPI } from "@mariozechner/pi-coding-agent";
 import { Text } from "@mariozechner/pi-tui";
 import { Type } from "@sinclair/typebox";
-import { readFileSync, existsSync, readFile as readFileCallback } from "fs";
+import { readFileSync, existsSync, readFile as readFileCallback, writeFileSync } from "fs";
 import { promisify } from "util";
 const readFile = promisify(readFileCallback);
 import { join } from "path";
 import { homedir } from "os";
+import { chmodSync } from "fs";
 
 interface MiniMaxConfig {
   apiKey: string;
@@ -46,34 +47,24 @@ interface MiniMaxToolDetails {
 }
 
 /**
- * Load MiniMax API key from settings files
- * Priority: project .pi/settings.json > ~/.pi/agent/settings.json
+ * Load MiniMax API key from auth file
+ * Priority: auth.json > environment variable
  */
-function loadApiKeyFromSettings(): string | null {
+function loadApiKeyFromAuthFile(): string | null {
   const homedirPath = homedir();
-  const globalSettingsPath = join(homedirPath, ".pi", "agent", "settings.json");
-  const projectSettingsPath = join(process.cwd(), ".pi", "settings.json");
+  const authFilePath = join(homedirPath, ".pi", "agent", "auth.json");
 
-  // Check project settings first (higher priority, can override global)
-  if (existsSync(projectSettingsPath)) {
+  if (existsSync(authFilePath)) {
     try {
-      const content = readFileSync(projectSettingsPath, "utf-8");
-      const settings = JSON.parse(content);
-      if (settings.minimax?.key) {
-        return settings.minimax.key;
+      const content = readFileSync(authFilePath, "utf-8");
+      const auth = JSON.parse(content);
+      // Check for minimax entry
+      if (auth.minimax?.key) {
+        return auth.minimax.key;
       }
-    } catch {
-      // Ignore parse errors
-    }
-  }
-
-  // Check global settings
-  if (existsSync(globalSettingsPath)) {
-    try {
-      const content = readFileSync(globalSettingsPath, "utf-8");
-      const settings = JSON.parse(content);
-      if (settings.minimax?.key) {
-        return settings.minimax.key;
+      // Also check for minimax_cn (China region)
+      if (auth.minimax_cn?.key) {
+        return auth.minimax_cn.key;
       }
     } catch {
       // Ignore parse errors
@@ -81,6 +72,61 @@ function loadApiKeyFromSettings(): string | null {
   }
 
   return null;
+}
+
+/**
+ * Save MiniMax API key to auth file
+ */
+function saveApiKeyToAuthFile(apiKey: string): void {
+  const homedirPath = homedir();
+  const authFilePath = join(homedirPath, ".pi", "agent", "auth.json");
+
+  let auth: Record<string, any> = {};
+
+  // Load existing auth file if it exists
+  if (existsSync(authFilePath)) {
+    try {
+      const content = readFileSync(authFilePath, "utf-8");
+      auth = JSON.parse(content);
+    } catch {
+      // Ignore parse errors, start fresh
+    }
+  }
+
+  // Update minimax entry
+  auth.minimax = {
+    type: "api_key",
+    key: apiKey,
+  };
+
+  // Write auth file with secure permissions (0600)
+  writeFileSync(authFilePath, JSON.stringify(auth, null, 2), { mode: 0o600 });
+}
+
+/**
+ * Remove MiniMax API key from auth file
+ */
+function removeApiKeyFromAuthFile(): void {
+  const homedirPath = homedir();
+  const authFilePath = join(homedirPath, ".pi", "agent", "auth.json");
+
+  if (!existsSync(authFilePath)) {
+    return;
+  }
+
+  try {
+    const content = readFileSync(authFilePath, "utf-8");
+    const auth = JSON.parse(content);
+
+    // Remove minimax entry
+    delete auth.minimax;
+    delete auth.minimax_cn;
+
+    // Write updated auth file
+    writeFileSync(authFilePath, JSON.stringify(auth, null, 2), { mode: 0o600 });
+  } catch {
+    // Ignore errors
+  }
 }
 
 /**
@@ -143,20 +189,19 @@ async function processImageUrl(imageUrl: string): Promise<string> {
 
 export default function (pi: ExtensionAPI) {
   // Configuration state - check sources in priority order:
-  // 1. Environment variable
-  // 2. Project settings (.pi/settings.json)
-  // 3. Global settings (~/.pi/agent/settings.json)
+  // 1. Environment variable (MINIMAX_API_KEY or MINIMAX_CN_API_KEY)
+  // 2. auth.json file (~/.pi/agent/auth.json)
   let config: MiniMaxConfig = {
-    apiKey: process.env.MINIMAX_API_KEY ?? "",
+    apiKey: process.env.MINIMAX_API_KEY ?? process.env.MINIMAX_CN_API_KEY ?? "",
     apiHost: process.env.MINIMAX_API_HOST ?? "https://api.minimax.io",
     configured: false,
   };
 
-  // Load from settings files if not set via env var
+  // Load from auth.json if not set via environment variable
   if (!config.apiKey) {
-    const settingsKey = loadApiKeyFromSettings();
-    if (settingsKey) {
-      config.apiKey = settingsKey;
+    const authKey = loadApiKeyFromAuthFile();
+    if (authKey) {
+      config.apiKey = authKey;
       config.configured = true;
     }
   } else {
@@ -212,13 +257,14 @@ Get your API key:
       if (args?.includes("--clear")) {
         const confirmClear = await ctx.ui.confirm(
           "Clear MiniMax Configuration",
-          "This will remove your API key from the current session."
+          "This will remove your API key from ~/.pi/agent/auth.json"
         );
         
         if (confirmClear) {
+          removeApiKeyFromAuthFile();
           config.apiKey = "";
           config.configured = false;
-          ctx.ui.notify("✓ Configuration cleared", "info");
+          ctx.ui.notify("✓ Configuration cleared from auth.json", "info");
         }
         return;
       }
@@ -231,13 +277,14 @@ Get your API key:
         // Confirm before saving
         const confirmSave = await ctx.ui.confirm(
           "Save MiniMax API Key?",
-          `Key: ${newKey.slice(0, 8)}...${newKey.slice(-4)}`
+          `This will save to ~/.pi/agent/auth.json`
         );
         
         if (confirmSave) {
+          saveApiKeyToAuthFile(newKey);
           config.apiKey = newKey;
           config.configured = true;
-          ctx.ui.notify("✓ MiniMax API key saved", "info");
+          ctx.ui.notify("✓ MiniMax API key saved to auth.json", "info");
         }
         return;
       }
@@ -251,7 +298,7 @@ To get an API key:
 2. Subscribe to a plan
 3. Copy your API key from the dashboard
 
-Your API key will only be stored in memory during this session.
+Your API key will be saved to ~/.pi/agent/auth.json
       `.trim();
 
       const apiKey = await ctx.ui.input("MiniMax API Key:", message);
@@ -259,13 +306,14 @@ Your API key will only be stored in memory during this session.
       if (apiKey && apiKey.trim()) {
         const confirmSave = await ctx.ui.confirm(
           "Save MiniMax API Key?",
-          "Save this API key for the current session?"
+          "Save this API key to ~/.pi/agent/auth.json?"
         );
         
         if (confirmSave) {
+          saveApiKeyToAuthFile(apiKey.trim());
           config.apiKey = apiKey.trim();
           config.configured = true;
-          ctx.ui.notify("✓ MiniMax API key configured", "info");
+          ctx.ui.notify("✓ MiniMax API key saved to auth.json", "info");
         }
       } else {
         ctx.ui.notify("Configuration cancelled", "warning");
