@@ -1,6 +1,6 @@
 {
   "name": "@imsus/pi-extension-minimax-coding-plan-mcp",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "MiniMax Coding Plan extension for pi coding agent - provides web_search and understand_image tools",
   "type": "module",
   "overrides": {
