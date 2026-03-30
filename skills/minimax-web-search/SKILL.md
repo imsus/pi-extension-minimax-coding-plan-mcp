@@ -113,3 +113,29 @@ You can use the suggestions to refine your search or ask the user which directio
 - **Status code 1004**: Authentication error - check API key and region
 - **Status code 2038**: Real-name verification required
 - **Other errors**: Check Trace-Id in error message for support
+
+---
+
+# Tavily Web Search (Alternative Provider)
+
+A parallel web search tool powered by Tavily, an AI-optimized search engine. Available alongside `web_search` when `TAVILY_API_KEY` is configured.
+
+## How to Use
+
+Call the `tavily_web_search` tool directly with a query:
+
+```
+tavily_web_search({ query: "your search query" })
+```
+
+## When to Prefer Tavily
+
+- **AI-optimized results**: Tavily is designed for LLM consumption, returning highly relevant snippets
+- **Relevance scoring**: Results include relevance scores to help prioritize
+- **Fallback**: Use when MiniMax search is unavailable or returns insufficient results
+
+## Configuration
+
+Set `TAVILY_API_KEY` environment variable, or use `/tavily-configure` to save the key to `~/.pi/agent/auth.json`.
+
+Get a free API key at https://app.tavily.com (1,000 free credits/month).

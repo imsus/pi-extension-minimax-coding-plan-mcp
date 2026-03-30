@@ -50,6 +50,7 @@ import { promisify } from "util";
 const readFile = promisify(readFileCallback);
 import { join } from "path";
 import { homedir } from "os";
+import { tavily } from "@tavily/core";
 
 /**
  * Configuration state for the MiniMax extension
@@ -87,6 +88,162 @@ interface MiniMaxToolDetails {
   imageUrl?: string;
   /** Number of results for web_search tool */
   resultCount?: number;
+}
+
+/**
+ * Configuration state for the Tavily extension
+ *
+ * @internal
+ */
+interface TavilyConfig {
+  /** The Tavily API key */
+  apiKey: string;
+  /** Whether the extension is configured */
+  configured: boolean;
+}
+
+/**
+ * Details about Tavily tool execution for UI rendering
+ *
+ * @internal
+ */
+interface TavilyToolDetails {
+  /** Current status: searching, complete, error, cancelled */
+  status: string;
+  /** Raw API response data */
+  raw?: Record<string, unknown>;
+  /** Error message if status is error */
+  error?: string;
+  /** Search query */
+  query?: string;
+  /** Number of results */
+  resultCount?: number;
+}
+
+/**
+ * Load Tavily API key from auth file
+ *
+ * Searches for API key in ~/.pi/agent/auth.json under "tavily" entry.
+ *
+ * @returns The API key if found, null otherwise
+ * @internal
+ */
+function loadTavilyApiKeyFromAuthFile(): string | null {
+  const homedirPath = homedir();
+  const authFilePath = join(homedirPath, ".pi", "agent", "auth.json");
+
+  if (existsSync(authFilePath)) {
+    try {
+      const content = readFileSync(authFilePath, "utf-8");
+      const auth = JSON.parse(content);
+      if (auth.tavily?.key) {
+        return auth.tavily.key;
+      }
+    } catch {
+      // Ignore parse errors
+    }
+  }
+
+  return null;
+}
+
+/**
+ * Save Tavily API key to auth file
+ *
+ * @param apiKey - The API key to save
+ * @internal
+ */
+function saveTavilyApiKeyToAuthFile(apiKey: string): void {
+  const homedirPath = homedir();
+  const authFilePath = join(homedirPath, ".pi", "agent", "auth.json");
+
+  let auth: Record<string, any> = {};
+
+  if (existsSync(authFilePath)) {
+    try {
+      const content = readFileSync(authFilePath, "utf-8");
+      auth = JSON.parse(content);
+    } catch {
+      // Ignore parse errors, start fresh
+    }
+  }
+
+  auth.tavily = {
+    type: "api_key",
+    key: apiKey,
+  };
+
+  writeFileSync(authFilePath, JSON.stringify(auth, null, 2), { mode: 0o600 });
+}
+
+/**
+ * Remove Tavily API key from auth file
+ */
+function removeTavilyApiKeyFromAuthFile(): void {
+  const homedirPath = homedir();
+  const authFilePath = join(homedirPath, ".pi", "agent", "auth.json");
+
+  if (!existsSync(authFilePath)) {
+    return;
+  }
+
+  try {
+    const content = readFileSync(authFilePath, "utf-8");
+    const auth = JSON.parse(content);
+    delete auth.tavily;
+    writeFileSync(authFilePath, JSON.stringify(auth, null, 2), { mode: 0o600 });
+  } catch {
+    // Ignore errors
+  }
+}
+
+/**
+ * Format Tavily search results into readable text
+ *
+ * @param results - The results array from Tavily search response
+ * @returns Formatted human-readable search results
+ * @internal
+ */
+function formatTavilySearchResults(response: any): string {
+  if (!response) return "No results found";
+
+  let output = "";
+
+  if (response.results && Array.isArray(response.results)) {
+    output = "🔍 Search Results (Tavily)\n\n";
+
+    response.results.forEach((item: any, index: number) => {
+      const title = item.title ?? "No title";
+      const url = item.url ?? "N/A";
+      const content = item.content ?? "";
+
+      output += `${index + 1}. ${title}\n`;
+      output += `   📎 ${url}\n`;
+
+      if (content) {
+        const truncatedContent = content.length > 200
+          ? content.slice(0, 200) + "..."
+          : content;
+        output += `   ${truncatedContent}\n`;
+      }
+
+      if (item.score) {
+        output += `   Score: ${item.score.toFixed(3)}\n`;
+      }
+
+      output += "\n";
+    });
+  }
+
+  if (response.answer) {
+    output += `💡 Answer: ${response.answer}\n\n`;
+  }
+
+  if (!output) {
+    output = JSON.stringify(response, null, 2);
+  }
+
+  return output;
 }
 
 /**
@@ -269,12 +426,33 @@ export default function (pi: ExtensionAPI) {
     config.configured = true;
   }
 
+  // Tavily configuration state
+  let tavilyConfig: TavilyConfig = {
+    apiKey: process.env.TAVILY_API_KEY ?? "",
+    configured: false,
+  };
+
+  // Load Tavily key from auth.json if not set via environment variable
+  if (!tavilyConfig.apiKey) {
+    const tavilyAuthKey = loadTavilyApiKeyFromAuthFile();
+    if (tavilyAuthKey) {
+      tavilyConfig.apiKey = tavilyAuthKey;
+      tavilyConfig.configured = true;
+    }
+  } else {
+    tavilyConfig.configured = true;
+  }
+
   // Notify on load
   pi.on("session_start", async (_event, ctx) => {
     if (config.configured) {
       ctx.ui.notify("✓ MiniMax MCP tools available (web_search, understand_image)", "info");
     } else {
       ctx.ui.notify("⚠ MiniMax API key not configured. Use /minimax-configure", "warning");
+    }
+
+    if (tavilyConfig.configured) {
+      ctx.ui.notify("✓ Tavily search available (tavily_web_search)", "info");
     }
   });
 
@@ -769,6 +947,225 @@ Examples:
       const status = details.status === "complete" ? "✓" : "●";
       const color = details.status === "complete" ? "success" : "warning";
       let text = theme.fg(color, `${status} Analysis complete`);
+
+      if (expanded && details.raw) {
+        text += "\n" + theme.fg("dim", JSON.stringify(details.raw, null, 2));
+      }
+
+      return new Text(text, 0, 0);
+    },
+  });
+
+  // Register Tavily configuration command
+  pi.registerCommand("tavily-configure", {
+    description: "Configure Tavily API key for tavily_web_search tool",
+    handler: async (args, ctx) => {
+      if (args?.includes("--help") || args?.includes("-h")) {
+        const helpText = `
+/tavily-configure [options]
+
+Options:
+  --key <api_key>    Set API key directly
+  --clear            Clear configured API key
+  --show             Show current configuration status
+  --help, -h         Show this help message
+
+Environment variables:
+  TAVILY_API_KEY     Your Tavily API key
+
+Get your API key:
+  https://app.tavily.com (1,000 free credits/month)
+        `.trim();
+
+        ctx.ui.notify(helpText, "info");
+        return;
+      }
+
+      if (args?.includes("--show")) {
+        const status = tavilyConfig.configured
+          ? `✓ Configured\nKey: ${tavilyConfig.apiKey.slice(0, 8)}...`
+          : "✗ Not configured";
+        ctx.ui.notify(status, "info");
+        return;
+      }
+
+      if (args?.includes("--clear")) {
+        const confirmClear = await ctx.ui.confirm(
+          "Clear Tavily Configuration",
+          "This will remove your API key from ~/.pi/agent/auth.json"
+        );
+
+        if (confirmClear) {
+          removeTavilyApiKeyFromAuthFile();
+          tavilyConfig.apiKey = "";
+          tavilyConfig.configured = false;
+          ctx.ui.notify("✓ Tavily configuration cleared from auth.json", "info");
+        }
+        return;
+      }
+
+      const keyMatch = args?.match(/--key[=:\s]+([^\s]+)/i);
+      if (keyMatch) {
+        const newKey = keyMatch[1];
+
+        const confirmSave = await ctx.ui.confirm(
+          "Save Tavily API Key?",
+          `This will save to ~/.pi/agent/auth.json`
+        );
+
+        if (confirmSave) {
+          saveTavilyApiKeyToAuthFile(newKey);
+          tavilyConfig.apiKey = newKey;
+          tavilyConfig.configured = true;
+          ctx.ui.notify("✓ Tavily API key saved to auth.json", "info");
+        }
+        return;
+      }
+
+      const message = `
+Enter your Tavily API key.
+
+To get an API key:
+1. Visit https://app.tavily.com
+2. Sign up (1,000 free credits/month, no credit card required)
+3. Copy your API key from the dashboard
+
+Your API key will be saved to ~/.pi/agent/auth.json
+      `.trim();
+
+      const apiKey = await ctx.ui.input("Tavily API Key:", message);
+
+      if (apiKey && apiKey.trim()) {
+        const confirmSave = await ctx.ui.confirm(
+          "Save Tavily API Key?",
+          "Save this API key to ~/.pi/agent/auth.json?"
+        );
+
+        if (confirmSave) {
+          saveTavilyApiKeyToAuthFile(apiKey.trim());
+          tavilyConfig.apiKey = apiKey.trim();
+          tavilyConfig.configured = true;
+          ctx.ui.notify("✓ Tavily API key saved to auth.json", "info");
+        }
+      } else {
+        ctx.ui.notify("Configuration cancelled", "warning");
+      }
+    },
+
+    getArgumentCompletions: (prefix: string) => {
+      const options = ["--help", "--show", "--clear", "--key "];
+      return options
+        .filter((opt) => opt.startsWith(prefix))
+        .map((opt) => ({ value: opt, label: opt }));
+    },
+  });
+
+  // Register tavily_web_search tool
+  pi.registerTool({
+    name: "tavily_web_search",
+    label: "Tavily Web Search",
+    description: `Search the web using Tavily, an AI-optimized search engine. Returns highly relevant search results with content snippets.
+
+Usage:
+- tavily_web_search({ query: "TypeScript best practices 2025" })
+- tavily_web_search({ query: "How to configure pi coding agent" })
+
+Example:
+Query: "React server components tutorial"
+Returns: List of relevant web pages with titles, URLs, content snippets, and relevance scores
+
+Tips:
+- Use 3-5 keywords for better results
+- Add current year for time-sensitive queries (e.g., "React 19 features 2025")
+- Be specific: "TypeScript 5.4 generics" instead of "TypeScript help"
+- Tavily is optimized for AI agents and returns high-relevance results`,
+
+    parameters: Type.Object({
+      query: Type.String({
+        description: "Search query string. Use 3-5 keywords. Add current year for time-sensitive queries.",
+        minLength: 2,
+        maxLength: 400,
+      }),
+    }),
+
+    async execute(toolCallId, params, onUpdate, ctx, signal) {
+      if (!tavilyConfig.configured) {
+        return createErrorResult(
+          "Tavily API key not configured",
+          "Use /tavily-configure to set your API key, or set TAVILY_API_KEY environment variable. Get a key at https://app.tavily.com"
+        );
+      }
+
+      if (!params.query || params.query.trim().length < 2) {
+        return createErrorResult(
+          "Invalid query",
+          "Query must be at least 2 characters long"
+        );
+      }
+
+      onUpdate?.({
+        content: [{ type: "text" as const, text: `🔍 Searching (Tavily): "${params.query}"` }],
+        details: { status: "searching", query: params.query } satisfies TavilyToolDetails,
+      });
+
+      try {
+        const tavilyClient = tavily({ apiKey: tavilyConfig.apiKey });
+        const response = await tavilyClient.search(params.query.trim(), {
+          searchDepth: "advanced",
+          maxResults: 10,
+        });
+
+        const formattedResults = formatTavilySearchResults(response);
+
+        return {
+          content: [{ type: "text" as const, text: formattedResults }],
+          details: {
+            status: "complete",
+            query: params.query,
+            resultCount: response.results?.length ?? 0,
+            raw: response as unknown as Record<string, unknown>,
+          } satisfies TavilyToolDetails,
+        };
+      } catch (error) {
+        if (error instanceof Error && error.name === "AbortError") {
+          return {
+            content: [{ type: "text" as const, text: "Search cancelled" }],
+            details: { status: "cancelled" } satisfies TavilyToolDetails,
+          };
+        }
+
+        const errorMessage = error instanceof Error ? error.message : "Unknown error";
+
+        // Handle authentication errors
+        if (errorMessage.includes("401") || errorMessage.includes("403") || errorMessage.includes("Unauthorized")) {
+          tavilyConfig.configured = false;
+          return createErrorResult(
+            "Authentication failed",
+            "Invalid Tavily API key. Check your key at https://app.tavily.com"
+          );
+        }
+
+        return createErrorResult("Tavily search failed", errorMessage);
+      }
+    },
+
+    renderCall(args, theme) {
+      let text = theme.fg("toolTitle", theme.bold("🔍 tavily_web_search "));
+      text += theme.fg("muted", `"${args.query}"`);
+      return new Text(text, 0, 0);
+    },
+
+    renderResult(result, { expanded }, theme) {
+      const details = result.details as TavilyToolDetails;
+
+      if (details.error) {
+        const text = theme.fg("error", "✗ Error");
+        return new Text(text, 0, 0);
+      }
+
+      const status = details.status === "complete" ? "✓" : "●";
+      const color = details.status === "complete" ? "success" : "warning";
+      let text = theme.fg(color, `${status} Tavily search complete`);
 
       if (expanded && details.raw) {
         text += "\n" + theme.fg("dim", JSON.stringify(details.raw, null, 2));

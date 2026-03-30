@@ -28,7 +28,8 @@
   },
   "homepage": "https://github.com/imsus/pi-extension-minimax-coding-plan-mcp#readme",
   "dependencies": {
-    "@sinclair/typebox": "^0.34.48"
+    "@sinclair/typebox": "^0.34.48",
+    "@tavily/core": "^0.6.1"
   },
   "devDependencies": {
     "@mariozechner/pi-coding-agent": "^0.50.3",
