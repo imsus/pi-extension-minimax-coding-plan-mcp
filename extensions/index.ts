@@ -464,7 +464,7 @@ Tips:
       }),
     }),
 
-    async execute(toolCallId, params, onUpdate, ctx, signal) {
+    async execute(toolCallId, params, signal, onUpdate, ctx) {
       // Validate configuration
       if (!config.configured) {
         return createErrorResult(
@@ -565,13 +565,14 @@ Tips:
       }
     },
 
-    renderCall(args, theme) {
+    renderCall(args, theme, _context) {
       let text = theme.fg("toolTitle", theme.bold("🔍 web_search "));
       text += theme.fg("muted", `"${args.query}"`);
       return new Text(text, 0, 0);
     },
 
-    renderResult(result, { expanded }, theme) {
+    renderResult(result, options, theme, _context) {
+      const { expanded } = options;
       const details = result.details as MiniMaxToolDetails;
 
       if (details.error) {
@@ -633,7 +634,7 @@ Examples:
       }),
     }),
 
-    async execute(toolCallId, params, onUpdate, ctx, signal) {
+    async execute(toolCallId, params, signal, onUpdate, ctx) {
       // Validate configuration
       if (!config.configured) {
         return createErrorResult(
@@ -751,14 +752,15 @@ Examples:
       }
     },
 
-    renderCall(args, theme) {
+    renderCall(args, theme, _context) {
       let text = theme.fg("toolTitle", theme.bold("🖼 understand_image "));
       text += theme.fg("muted", `"${args.prompt.slice(0, 30)}..."`);
       text += "\n" + theme.fg("dim", `  Image: ${args.image_url.slice(0, 50)}...`);
       return new Text(text, 0, 0);
     },
 
-    renderResult(result, { expanded }, theme) {
+    renderResult(result, options, theme, _context) {
+      const { expanded } = options;
       const details = result.details as MiniMaxToolDetails;
 
       if (details.error) {
