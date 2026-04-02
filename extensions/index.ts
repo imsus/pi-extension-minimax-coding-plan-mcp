@@ -194,7 +194,7 @@ function removeApiKeyFromAuthFile(): void {
  * @throws Error if image cannot be downloaded or read
  * @internal
  */
-async function processImageUrl(imageUrl: string): Promise<string> {
+async function processImageUrl(imageUrl: string, signal?: AbortSignal): Promise<string> {
   // Remove @ prefix if present
   if (imageUrl.startsWith("@")) {
     imageUrl = imageUrl.slice(1);
@@ -207,7 +207,7 @@ async function processImageUrl(imageUrl: string): Promise<string> {
 
   // Handle HTTP/HTTPS URLs
   if (imageUrl.startsWith("http://") || imageUrl.startsWith("https://")) {
-    const response = await fetch(imageUrl);
+    const response = await fetch(imageUrl, { signal });
     if (!response.ok) {
       throw new Error(`Failed to download image: ${response.statusText}`);
     }
@@ -658,7 +658,7 @@ Examples:
 
       try {
         // Process image to base64 data URL
-        const base64ImageUrl = await processImageUrl(params.image_url);
+        const base64ImageUrl = await processImageUrl(params.image_url, signal);
 
         onUpdate?.({
           content: [{ type: "text" as const, text: `🖼 Analyzing image...` }],
