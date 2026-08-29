@@ -63,6 +63,14 @@ interface MiniMaxConfig {
   apiHost: string;
   /** Whether the extension is configured */
   configured: boolean;
+  /** Provider used by understand_image */
+  imageProvider: "minimax" | "atlascloud";
+  /** Atlas Cloud API key for optional image understanding */
+  atlasApiKey: string;
+  /** Atlas Cloud API host */
+  atlasApiHost: string;
+  /** Atlas Cloud vision-capable chat model */
+  atlasVisionModel: string;
 }
 
 /**
@@ -248,6 +256,32 @@ async function processImageUrl(imageUrl: string, signal?: AbortSignal): Promise<
   }
 }
 
+export function buildAtlasVisionRequest(prompt: string, imageUrl: string, model: string) {
+  return {
+    model,
+    messages: [
+      {
+        role: "user",
+        content: [
+          { type: "text", text: prompt },
+          { type: "image_url", image_url: { url: imageUrl } },
+        ],
+      },
+    ],
+    max_tokens: 2048,
+  };
+}
+
+export function extractAtlasVisionContent(result: unknown): string | null {
+  if (!result || typeof result !== "object") return null;
+  const choices = (result as { choices?: unknown }).choices;
+  if (!Array.isArray(choices) || choices.length === 0) return null;
+  const message = (choices[0] as { message?: unknown })?.message;
+  if (!message || typeof message !== "object") return null;
+  const content = (message as { content?: unknown }).content;
+  return typeof content === "string" && content.trim() ? content : null;
+}
+
 export default function (pi: ExtensionAPI) {
   // Configuration state - check sources in priority order:
   // 1. Environment variable (MINIMAX_API_KEY or MINIMAX_CN_API_KEY)
@@ -256,6 +290,12 @@ export default function (pi: ExtensionAPI) {
     apiKey: process.env.MINIMAX_API_KEY ?? process.env.MINIMAX_CN_API_KEY ?? "",
     apiHost: process.env.MINIMAX_API_HOST ?? "https://api.minimax.io",
     configured: false,
+    imageProvider: process.env.IMAGE_UNDERSTANDING_PROVIDER === "atlascloud"
+      ? "atlascloud"
+      : "minimax",
+    atlasApiKey: process.env.ATLASCLOUD_API_KEY ?? "",
+    atlasApiHost: process.env.ATLASCLOUD_API_HOST ?? "https://api.atlascloud.ai",
+    atlasVisionModel: process.env.ATLASCLOUD_VISION_MODEL ?? "google/gemini-3.1-flash-lite",
   };
 
   // Load from auth.json if not set via environment variable
@@ -271,10 +311,19 @@ export default function (pi: ExtensionAPI) {
 
   // Notify on load
   pi.on("session_start", async (_event, ctx) => {
+    const imageConfigured = config.imageProvider === "atlascloud"
+      ? Boolean(config.atlasApiKey)
+      : config.configured;
     if (config.configured) {
-      ctx.ui.notify("✓ MiniMax MCP tools available (web_search, understand_image)", "info");
+      const imageLabel = config.imageProvider === "atlascloud"
+        ? "understand_image via Atlas Cloud"
+        : "understand_image via MiniMax";
+      ctx.ui.notify(`✓ MiniMax web_search available; ${imageLabel}`, imageConfigured ? "info" : "warning");
     } else {
-      ctx.ui.notify("⚠ MiniMax API key not configured. Use /minimax-configure", "warning");
+      const message = imageConfigured
+        ? "⚠ MiniMax web_search is not configured; Atlas Cloud understand_image is available"
+        : "⚠ MiniMax API key not configured. Use /minimax-configure";
+      ctx.ui.notify(message, "warning");
     }
   });
 
@@ -402,7 +451,7 @@ Your API key will be saved to ~/.pi/agent/auth.json
           "",
           "Available tools:",
           "  • web_search - Search the web",
-          "  • understand_image - Analyze images",
+          `  • understand_image - Analyze images via ${config.imageProvider === "atlascloud" ? "Atlas Cloud" : "MiniMax"}`,
         ].join("\n");
 
         ctx.ui.notify(status, "info");
@@ -636,10 +685,16 @@ Examples:
 
     async execute(toolCallId, params, signal, onUpdate, ctx) {
       // Validate configuration
-      if (!config.configured) {
+      const imageConfigured = config.imageProvider === "atlascloud"
+        ? Boolean(config.atlasApiKey)
+        : config.configured;
+      if (!imageConfigured) {
+        const setup = config.imageProvider === "atlascloud"
+          ? "Set ATLASCLOUD_API_KEY, or use IMAGE_UNDERSTANDING_PROVIDER=minimax"
+          : "Use /minimax-configure to set your API key, or set MINIMAX_API_KEY environment variable";
         return createErrorResult(
-          "MiniMax API key not configured",
-          "Use /minimax-configure to set your API key, or set MINIMAX_API_KEY environment variable"
+          `${config.imageProvider === "atlascloud" ? "Atlas Cloud" : "MiniMax"} API key not configured`,
+          setup
         );
       }
 
@@ -665,29 +720,48 @@ Examples:
           details: { status: "analyzing" } satisfies MiniMaxToolDetails,
         });
 
-        const response = await fetch(`${config.apiHost}/v1/coding_plan/vlm`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${config.apiKey}`,
-            "MM-API-Source": "pi-minimax-mcp",
-          },
-          body: JSON.stringify({
-            prompt: params.prompt,
-            image_url: base64ImageUrl,
-          }),
-          signal,
-        });
+        const usingAtlas = config.imageProvider === "atlascloud";
+        const response = usingAtlas
+          ? await fetch(`${config.atlasApiHost.replace(/\/$/, "")}/v1/chat/completions`, {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${config.atlasApiKey}`,
+              },
+              body: JSON.stringify(
+                buildAtlasVisionRequest(params.prompt, base64ImageUrl, config.atlasVisionModel)
+              ),
+              signal,
+            })
+          : await fetch(`${config.apiHost}/v1/coding_plan/vlm`, {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${config.apiKey}`,
+                "MM-API-Source": "pi-minimax-mcp",
+              },
+              body: JSON.stringify({
+                prompt: params.prompt,
+                image_url: base64ImageUrl,
+              }),
+              signal,
+            });
 
         if (!response.ok) {
           const errorText = await response.text();
 
           // Handle authentication errors
           if (response.status === 401 || response.status === 403) {
-            config.configured = false;
+            if (usingAtlas) {
+              config.atlasApiKey = "";
+            } else {
+              config.configured = false;
+            }
             return createErrorResult(
               "Authentication failed",
-              "Invalid API key. Check your API key and API host. Global: https://api.minimax.io, Mainland China: https://api.minimaxi.com"
+              usingAtlas
+                ? "Invalid Atlas Cloud API key. Check ATLASCLOUD_API_KEY and ATLASCLOUD_API_HOST."
+                : "Invalid API key. Check your API key and API host. Global: https://api.minimax.io, Mainland China: https://api.minimaxi.com"
             );
           }
 
@@ -701,7 +775,7 @@ Examples:
 
         // Check MiniMax API error code
         const baseResp = result.base_resp || {};
-        if (baseResp.status_code !== 0) {
+        if (!usingAtlas && baseResp.status_code !== 0) {
           switch (baseResp.status_code) {
             case 1004:
               return createErrorResult(
@@ -721,12 +795,12 @@ Examples:
           }
         }
 
-        const content = result.content;
+        const content = usingAtlas ? extractAtlasVisionContent(result) : result.content;
 
         if (!content) {
           return createErrorResult(
             "No content returned",
-            "The VLM API didn't return any analysis content"
+            `${usingAtlas ? "Atlas Cloud" : "MiniMax"} didn't return any analysis content`
           );
         }
 

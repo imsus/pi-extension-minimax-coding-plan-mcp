@@ -133,6 +133,22 @@ The extension checks for the API key in this order:
 
 > **Note:** Use `/minimax-configure` command to set up your API key interactively.
 
+### Optional Atlas Cloud Image Understanding
+
+MiniMax remains the default for both tools. To route only `understand_image`
+through an Atlas Cloud vision model while keeping `web_search` on MiniMax, set:
+
+```bash
+export IMAGE_UNDERSTANDING_PROVIDER="atlascloud"
+export ATLASCLOUD_API_KEY="your-api-key-here"
+export ATLASCLOUD_VISION_MODEL="google/gemini-3.1-flash-lite" # optional default
+```
+
+The selected model must support image input and the OpenAI chat-completions
+protocol. The extension sends one request to `https://api.atlascloud.ai/v1/chat/completions`
+and does not automatically retry paid requests. Override the host with
+`ATLASCLOUD_API_HOST` only when using a compatible deployment.
+
 ### In-Session Configuration
 
 Set or update your API key:
@@ -283,6 +299,9 @@ understand_image({
 ```
 
 **Returns:** AI analysis of the image content based on your prompt.
+
+When `IMAGE_UNDERSTANDING_PROVIDER=atlascloud`, the same tool contract and image
+preprocessing are preserved; only the vision backend changes.
 
 ## Extension Commands
 
