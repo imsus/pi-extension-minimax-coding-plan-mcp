@@ -5,7 +5,7 @@ description: Analyze images using AI with the understand_image tool
 
 # MiniMax Image Understanding Skill
 
-Use this skill when you need to analyze, describe, or extract information from images.
+Use this skill when you need to analyze, describe, or extract information from images. MiniMax is the default backend; the extension can route this tool to Atlas Cloud when `IMAGE_UNDERSTANDING_PROVIDER=atlascloud` is explicitly configured.
 
 ## How to Use
 
@@ -57,6 +57,14 @@ understand_image({
   "image_url": "data:image/jpeg;base64,/9j/4AAQ..."
 }
 ```
+
+### Optional Atlas Cloud backend
+
+Set `IMAGE_UNDERSTANDING_PROVIDER=atlascloud` and `ATLASCLOUD_API_KEY` to use a
+vision-capable Atlas Cloud chat model. The default model is
+`google/gemini-3.1-flash-lite`; override it with `ATLASCLOUD_VISION_MODEL` only
+after checking that the model supports image input and OpenAI chat completions.
+The extension sends one request and never automatically retries a paid call.
 
 **Response Format**:
 ```json
